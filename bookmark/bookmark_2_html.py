@@ -1,124 +1,115 @@
-Intel
-    sharepoint
-        IKGF,https://intel.sharepoint.com/sites/intelkeygenerationfacility
-        CAAS docker,https://intel.sharepoint.com/sites/caascustomercommunity/SitePages/CaaS-Wiki-Home.aspx
-        sai pse,https://intel.sharepoint.com/sites/PSE_CPS/Shared%20Documents/Forms/AllItems.aspx
-    AI
-        AI training,https://intel.sharepoint.com/sites/C4S_AI/SitePages/Live-Training-Sessions.aspx
-        intel AI tools,https://circuit.intel.com/content/np/sites/AIInside/AITools1.html
-        intel AI tools,https://wiki.ith.intel.com/pages/viewpage.action?pageId=3341530451
-    tools
-        devices connected,https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/?redirectedfrom=MSDN
-        dbg tools supprt wiki,https://wiki.ith.intel.com/display/ITPII/Home
-    info
-        intel proxy,https://intelpedia.intel.com/Proxy_at_Intel#npm_.28node.js.29
-        Solar tool,https://wiki.ith.intel.com/display/ITSIPF/Solar+Tool
-    SDL
-        SDLe home,https://wiki.ith.intel.com/display/SDLEssentials
-    cCAMS
-        JAMA,https://ikgfjama.intel.com/perspective.req#/projects/92/dashboard
-    OCS
-        JAMA OCS,https://ikgfjama.intel.com/perspective.req#/projects/70/dashboard
-    docker registry,
-        coverity,https://amr-registry-pre.caas.intel.com/harbor/projects/123667/repositories/coverity/artifacts-tab
-    TSC
-        TSC signing db,https://ikgfpreprodssrs.intel.com/ReportManager/report/OCS%20Reports/TSCSS%20Reports/TSCSS%20DBP%20Queue
-        repos,https://github.com/intel-innersource/inventory/blob/master/organizations/intel-innersource/repos/applications/security/supplychain/repos.yml
-        inventory arcblue,https://github.com/intel-innersource/inventory/blob/master/runner-groups/1source-arc-blue.yml
-        inventory arcgreen,https://github.com/intel-innersource/inventory/blob/master/runner-groups/1source-arc-green.yml
-        Git TSC validation,https://github.com/intel-sandbox/tsc_validation
-        Coverity,https://coverityent.devtools.intel.com/prod3/#/project-view/12533/10198
-        Jira,https://jira.devtools.intel.com/projects/TRANSPAREO/issues/TRANSPAREO-8
-Learning
-    AI
-        learn deeplearning,https://www.blackbox.ai/
-        AI podcast,https://omny.fm/shows/technically-speaking/ai-education-programs-with-intel
-    Linux
-        grep manual,https://man7.org/linux/man-pages/man1/grep.1.html
-        16 linux commands,https://www.binarytides.com/linux-commands-hardware-info/
-    Interview Prep
-        math problems,https://projecteuler.net/archives
-        c# interview question,https://www.simplilearn.com/tutorials/c-sharp-tutorial/c-sharp-interview-questions
-        leetcode 75 questions,https://www.teamblind.com/post/new-year-gift-curated-list-of-top-75-leetcode-questions-to-save-your-time-oam1oreu
-        leetcode 150 Questions,https://leetcode.com/studyplan/top-interview-150/
-        programming problems,https://www.techiedelight.com/
-        programming problems,https://adriann.github.io/programming_problems.html
-        skill dev,https://www.hackerrank.com/skills-directory
-        prep kit,https://www.hackerrank.com/interview/preparation-kits
-        System Design,https://bytebytego.com/courses/system-design-interview/
-        coding platform,https://coderbyte.com/
-        coding platform,https://www.codewars.com/
-    Cheat sheet
-        git,https://about.gitlab.com/images/press/git-cheat-sheet.pdf
-        vim,https://vim.rtorr.com/
-        vim tips,https://vim.fandom.com/wiki/Best_Vim_Tips
-        Mac Shortcuts,https://support.apple.com/en-us/102650
-    Misc
-        git book,https://git-scm.com/book/en/v2
-        Modern Standby,https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/modern-standby-vs-s3
-    book
-        Powershell for sysadmin,https://www.oreilly.com/library/view/powershell-for-sysadmins/9781098122638/
-        Learn powershell,https://www.oreilly.com/library/view/learn-windows-powershell/9781617294167/
-        Ipython wiki notebook,https://github.com/Carreau/ipython-wiki/blob/master/A-gallery-of-interesting-IPython-Notebooks.md#introductory-tutorials
-Tools
-    image to text
-        Capture2text download,https://capture2text.sourceforge.net/
-        photo to text ms download,https://apps.microsoft.com/detail/9nblggh6hrzh
-        Image to text,https://www.imagetotext.io/
-    Text/file share
-        multitool no login,https://system.tips/text/text-share
-        qtext,https://kuick.io/
-    Utility
-        rweverything download,https://rweverything.com/download/
-        rweverything usage,https://wiki.ith.intel.com/display/DebugEncyclopedia/Read+Write+Everything+tool+-+usage+notes
-        Rawcap(net sniffer),https://www.netresec.com/?page=RawCap
-        fuzzing tool,https://github.com/googleprojectzero/winafl
-        sysinternal tools download,https://learn.microsoft.com/en-us/sysinternals/downloads/
-        sysinternal download,https://live.sysinternals.com/
-        afl tool, https://lcamtuf.coredump.cx/afl/
-        poolmon find mem leak,https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/using-poolmon-to-find-a-kernel-mode-memory-leak
-        install win dbg,https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/?redirectedfrom=MSDN
-        asn parser and more,https://pkitools.net/pages/ca/asn1.html
-        asn parser,https://lapo.it/asn1js
-        write to/from mem,https://github.com/pavel-a/devmemX
-        design,https://www.canva.com/
-        sketchpad,https://sketch.io/sketchpad/
-        
-        
-ToolsAI
-    LLM
-        prompt ai,https://www.blackbox.ai/
-        Claude,https://claude.ai/
-    Misc
-        multi AI, https://www.yeschat.ai/
-Career
-MyPersonal
-    Games
-        bang,http://chriscarr.name:8080/westerncardgame/index.html
-        7 game collections,https://netgames.io/games/
-        collections, https://tabletopia.com/games
-        rubric cube solver,https://rubiks-cube-solver.com/how-to-solve/
-    bills
-        HOA,https://commonres.twa.rentmanager.com/
-        PGE,https://portlandgeneral.com/
-        TVWD,https://oprusipng-opencloud.openintl.com/
-        Gas,https://www.online-billpay.com/
-    Stock
-        check stock,https://www.tradingview.com/chart/
-        IPO listing,https://www.nasdaq.com/market-activity/ipos
-        googlefinance watchlist,https://www.google.com/finance/portfolio/watchlist
-    Misc
-        My Pages,https://itsforfun.pythonanywhere.com/
-        
-Ila
+import os
+import re
+from html import escape
 
-Areeba
-    Books
-        free books,https://monkeypen.com/pages/free-childrens-books    
-    Misc
-        Game Making,https://scratch.mit.edu/projects/editor/?tutorial=getStarted
-        Typing lesson,https://www.roomrecess.com/games/TypingTutorForKids/play.html
-    School
-        ParentVue,https://parentvue.beaverton.k12.or.us/PXP2_Login.aspx
-        Homeschool curriculam,https://www.homeschoolmath.net/teaching/NC_3-5_resources.php
-        worksheet,https://www.commoncoresheets.com/using-substitution-to-solve-problems/95/download
+def parse_bookmark_file(input_file):
+    with open(input_file, 'r', encoding='utf-8') as f:
+        lines = f.readlines()
+
+    structure = {}
+    current_topic = None
+    current_subtopic = None
+
+    for line in lines:
+        stripped = line.rstrip('\n')
+        if not stripped.strip():
+            continue
+        indent_level = len(line) - len(line.lstrip(' '))
+        if indent_level == 0:
+            current_topic = stripped.strip()
+            structure[current_topic] = {}
+        elif indent_level == 4:
+            current_subtopic = stripped.strip()
+            structure[current_topic][current_subtopic] = []
+        elif indent_level == 8:
+            parts = re.split(r'[\t,]', stripped.strip(), maxsplit=1)
+            if len(parts) == 2:
+                link_text, url = parts
+                structure[current_topic][current_subtopic].append((link_text.strip(), url.strip()))
+    return structure
+
+def generate_html(structure, output_file):
+    html = []
+    html.append("<!DOCTYPE html>")
+    html.append("<html lang='en'>")
+    html.append("<head>")
+    html.append("<meta charset='UTF-8'>")
+    html.append("<meta name='viewport' content='width=device-width, initial-scale=1.0'>")
+    html.append("<title>Organized Bookmarks</title>")
+    html.append("""
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .topic, .subtopic { cursor: pointer; margin: 5px 0; font-weight: bold; }
+        .subtopic-list, .link-list { display: none; margin-left: 20px; }
+        .link-item { margin-left: 20px; }
+        #searchResults { margin-top: 20px; }
+    </style>
+    <script>
+        function toggleVisibility(id) {
+            var el = document.getElementById(id);
+            if (el.style.display === 'none') {
+                el.style.display = 'block';
+            } else {
+                el.style.display = 'none';
+            }
+        }
+
+        function searchLinks() {
+            var input = document.getElementById('searchInput').value.toLowerCase();
+            var results = document.getElementById('searchResults');
+            results.innerHTML = '';
+            if (input.length === 0) return;
+
+            var links = document.querySelectorAll('.link-item');
+            links.forEach(function(link) {
+                var text = link.textContent.toLowerCase();
+                var url = link.getAttribute('data-url').toLowerCase();
+                var topic = link.getAttribute('data-topic').toLowerCase();
+                var subtopic = link.getAttribute('data-subtopic').toLowerCase();
+                if (text.includes(input) || url.includes(input) || topic.includes(input) || subtopic.includes(input)) {
+                    var clone = link.cloneNode(true);
+                    results.appendChild(clone);
+                }
+            });
+        }
+    </script>
+    <link href="style.css" rel="stylesheet"/></head>
+    """)
+    html.append("</head>")
+    html.append("<body>")
+    html.append("<h1>Atiq's Bookmarks Collection</h1>")
+    html.append("<input type='text' id='searchInput' onkeyup='searchLinks()' placeholder='Search links...' style='width: 100%; padding: 8px;'>")
+    html.append("<div id='bookmarkContainer'>")
+
+    topic_id = 0
+    for topic, subtopics in structure.items():
+        topic_div_id = f"topic_{topic_id}"
+        html.append(f"<div class='topic' onclick=\"toggleVisibility('{topic_div_id}')\">{escape(topic)}</div>")
+        html.append(f"<div class='subtopic-list' id='{topic_div_id}' style='display:none;'>")
+        subtopic_id = 0
+        for subtopic, links in subtopics.items():
+            subtopic_div_id = f"{topic_div_id}_sub_{subtopic_id}"
+            html.append(f"<div class='subtopic' onclick=\"toggleVisibility('{subtopic_div_id}')\">{escape(subtopic)}</div>")
+            html.append(f"<div class='link-list' id='{subtopic_div_id}' style='display:none;'>")
+            for text, url in links:
+                html.append(f"<div class='link-item' data-topic='{escape(topic)}' data-subtopic='{escape(subtopic)}' data-url='{escape(url)}'>{escape(text)} - <a href='{escape(url)}' target='_blank'>{escape(url)}</a></div>")
+            html.append("</div>")
+            subtopic_id += 1
+        html.append("</div>")
+        topic_id += 1
+
+    html.append("</div>")
+    html.append("<h2>Search Results</h2>")
+    html.append("<div id='searchResults'></div>")
+    html.append("</body>")
+    html.append("</html>")
+
+    with open(output_file, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(html))
+
+if __name__ == '__main__':
+    input_file = 'bookmarklinks.txt'
+    output_file = 'organized_links.html'
+    structure = parse_bookmark_file(input_file)
+    generate_html(structure, output_file)
+    print(f"HTML file generated: {output_file}")
