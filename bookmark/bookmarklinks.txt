@@ -68,8 +68,10 @@ Tools
     Text/file share
         multitool no login,https://system.tips/text/text-share
         qtext,https://kuick.io/
-    Utility
-        rweverything download,https://rweverything.com/download/
+        text share,https://rentry.co/
+        filexfer,https://file.pizza/
+        any size file,https://limewire.com/
+    Utility        rweverything download,https://rweverything.com/download/
         rweverything usage,https://wiki.ith.intel.com/display/DebugEncyclopedia/Read+Write+Everything+tool+-+usage+notes
         Rawcap(net sniffer),https://www.netresec.com/?page=RawCap
         fuzzing tool,https://github.com/googleprojectzero/winafl
@@ -83,14 +85,14 @@ Tools
         write to/from mem,https://github.com/pavel-a/devmemX
         design,https://www.canva.com/
         sketchpad,https://sketch.io/sketchpad/
-        
-        
+        fakefb,https://fakedetail.com/fake-facebook-chat-generator
 ToolsAI
     LLM
         prompt ai,https://www.blackbox.ai/
         Claude,https://claude.ai/
     Misc
         multi AI, https://www.yeschat.ai/
+        Unknown,https://theresanaiforthat.com/
 Career
 MyPersonal
     Games

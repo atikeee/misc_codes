@@ -35,7 +35,7 @@ def generate_html(structure, output_file):
     html.append("<head>")
     html.append("<meta charset='UTF-8'>")
     html.append("<meta name='viewport' content='width=device-width, initial-scale=1.0'>")
-    html.append("<title>Organized Bookmarks</title>")
+    html.append("<title>All Bookmarks</title>")
     html.append("""
     <style>
         body { font-family: Arial, sans-serif; padding: 20px; }
@@ -109,7 +109,7 @@ def generate_html(structure, output_file):
 
 if __name__ == '__main__':
     input_file = 'bookmarklinks.txt'
-    output_file = 'organized_links.html'
+    output_file = 'links.html'
     structure = parse_bookmark_file(input_file)
     generate_html(structure, output_file)
     print(f"HTML file generated: {output_file}")
