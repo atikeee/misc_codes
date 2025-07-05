@@ -25,7 +25,8 @@ for i in range(2):
         'access_key': API_KEY,
         'dep_iata': SRC,
         'arr_iata': DST,
-        'limit': 20
+        'airline_iata':'DL',
+        'limit': 40
     }
 
     # Connect to SQLite database
@@ -56,7 +57,7 @@ for i in range(2):
     for flight in data['data']:
         airline = flight['airline']['name']
         flight_number = flight['flight']['iata']
-        
+        print(airline,flight_number)
         if 'Delta' not in airline:
             continue
 

@@ -1,7 +1,7 @@
 from flask import Flask, request, render_template, redirect, url_for,jsonify,render_template_string
 import sqlite3
-from datetime import datetime
-
+from datetime import datetime,timedelta
+import requests
 app = Flask(__name__)
 
 # HTML will be injected from a separate file
@@ -143,6 +143,110 @@ def delete_flight(flight_id):
         print(f"Error deleting flight {flight_id}: {e}")
         # Return a JSON response indicating failure with an error message
         return jsonify(success=False, message=str(e)), 500 # Return 500 status for server error
+# --- NEW ROUTE FOR PARSING FLIGHTS VIA WEB FORM ---
+@app.route("/parse_flights", methods=["GET", "POST"])
+def parse_flights_page():
+    message = ""
+    if request.method == "POST":
+        src_iata = request.form.get("src_iata", "").upper()
+        dst_iata = request.form.get("dst_iata", "").upper()
 
+        if not src_iata or not dst_iata:
+            message = "❌ Error: Both Source and Destination IATA codes are required."
+        else:
+            try:
+                # Get tomorrow's date in YYYY-MM-DD format
+                query_date = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+
+                API_KEY = '26ae356c0b45057250bdca8fbaacd231'  # Replace with your actual key
+                BASE_URL = 'http://api.aviationstack.com/v1/flights'
+                
+                # List to store results from both directions
+                all_parsed_flights = []
+
+                # Iterate for both SRC->DST and DST->SRC
+                for i in range(2):
+                    current_src = src_iata if i == 0 else dst_iata
+                    current_dst = dst_iata if i == 0 else src_iata
+
+                    params = {
+                        'access_key': API_KEY,
+                        'dep_iata': current_src,
+                        'arr_iata': current_dst,
+                        'limit': 20, # Limit results to 20 per query
+                        'flight_date': query_date # Add flight date to params
+                    }
+
+                    response = requests.get(BASE_URL, params=params)
+                    data = response.json()
+                    print(data)
+                    if 'data' not in data or not data['data']:
+                        # print(f"API error or no data for {current_src}->{current_dst}: {data}")
+                        message += f"⚠️ Warning: No flights found for {current_src} to {current_dst}. "
+                        continue # Continue to the next direction
+
+                    conn = sqlite3.connect(DB)
+                    cursor = conn.cursor()
+
+                    for flight in data['data']:
+                        airline = flight.get('airline', {}).get('name')
+                        flight_number = flight.get('flight', {}).get('iata')
+                        
+                        # Only process Delta flights
+                        if 'Delta' not in str(airline): 
+                            continue
+
+                        departure_time = flight.get('departure', {}).get('scheduled')
+                        arrival_time = flight.get('arrival', {}).get('scheduled')
+                        
+                        # Use iata codes from the API response for accuracy
+                        api_src = flight.get('departure', {}).get('iata')
+                        api_dst = flight.get('arrival', {}).get('iata')
+
+                        if departure_time and arrival_time and api_src and api_dst:
+                            try:
+                                dep_dt = datetime.fromisoformat(departure_time.replace('Z', '+00:00'))
+                                arr_dt = datetime.fromisoformat(arrival_time.replace('Z', '+00:00'))
+
+                                duration_minutes = int((arr_dt - dep_dt).total_seconds() // 60)
+
+                                cursor.execute('''
+                                    INSERT INTO flights (flightno, src, dst, departure, arrival, duration)
+                                    VALUES (?, ?, ?, ?, ?, ?)
+                                ''', (
+                                    flight_number,
+                                    api_src, # Use API's src
+                                    api_dst, # Use API's dst
+                                    dep_dt.strftime('%Y-%m-%d %H:%M:%S'),
+                                    arr_dt.strftime('%Y-%m-%d %H:%M:%S'),
+                                    duration_minutes
+                                ))
+                                all_parsed_flights.append(f"{airline} {flight_number} ({api_src} to {api_dst}) added.")
+
+                            except ValueError as ve:
+                                print(f"Date parsing error for flight {flight_number}: {ve}")
+                                message += f"❌ Error parsing date for {flight_number}. "
+                            except Exception as insert_e:
+                                print(f"Database insert error for flight {flight_number}: {insert_e}")
+                                message += f"❌ Error saving {flight_number} to DB. "
+                        else:
+                            print(f"{airline} {flight_number} — Missing time/airport info\n")
+                            message += f"⚠️ Warning: Missing info for {flight_number}. "
+                    
+                    conn.commit()
+                    conn.close() # Close connection after each direction's processing
+
+                if not message: # If no warnings or errors, assume success
+                    message = f"✅ Flight data parsed and saved successfully for {src_iata} and {dst_iata}!"
+                elif "Error" in message:
+                    message = "❌ Some errors occurred during parsing: " + message
+                else:
+                    message = "⚠️ Warnings during parsing: " + message
+
+            except requests.exceptions.RequestException as req_e:
+                message = f"❌ Network Error: Could not connect to API. {req_e}"
+            except Exception as e:
+                message = f"❌ An unexpected error occurred: {e}"
+    return render_template("parseflights.html", message=message)
 if __name__ == "__main__":
     app.run(debug=True)

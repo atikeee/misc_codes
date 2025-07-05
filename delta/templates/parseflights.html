@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Parse Delta Flights</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+        <style>
+            body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f7f6; color: #333; }
+            .container { max-width: 600px; margin: 50px auto; padding: 30px; background-color: #fff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+            h1 { text-align: center; color: #2c3e50; margin-bottom: 30px; }
+            form { display: flex; flex-direction: column; gap: 15px; }
+            label { font-weight: bold; color: #34495e; }
+            input[type="text"] { padding: 10px; border: 1px solid #ced4da; border-radius: 5px; font-size: 1em; }
+            button { background-color: #3498db; color: white; padding: 12px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 1.1em; transition: background-color 0.3s ease; }
+            button:hover { background-color: #2980b9; }
+            .status-message { margin-top: 25px; padding: 15px; border-radius: 8px; font-weight: bold; text-align: center; }
+            .status-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+            .status-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+            .status-warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+            a { display: block; text-align: center; margin-top: 20px; color: #3498db; text-decoration: none; }
+            a:hover { text-decoration: underline; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Parse Delta Flight Data</h1>
+            <p>Enter Source (e.g., MSP) and Destination (e.g., PDX) IATA codes to fetch and save flight data.</p>
+            <form method="POST">
+                <label for="src_iata">Source IATA Code:</label>
+                <input type="text" id="src_iata" name="src_iata" required maxlength="3" pattern="[A-Z]{3}" title="Enter a 3-letter IATA code (e.g., MSP)">
+
+                <label for="dst_iata">Destination IATA Code:</label>
+                <input type="text" id="dst_iata" name="dst_iata" required maxlength="3" pattern="[A-Z]{3}" title="Enter a 3-letter IATA code (e.g., PDX)">
+
+                <button type="submit">Fetch & Save Flights</button>
+            </form>
+
+            {% if message %}
+                <div class="status-message {% if '✅' in message %}status-success{% elif '❌' in message %}status-error{% else %}status-warning{% endif %}">
+                    {{ message }}
+                </div>
+            {% endif %}
+
+            <a href="{{ url_for('view_page2') }}">View All Flights</a>
+        </div>
+    </body>
+    </html>
