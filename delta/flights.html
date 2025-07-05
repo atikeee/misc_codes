@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Delta Flights</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 2rem;
+            background: #f0f2f5;
+        }
+        h1 {
+            text-align: center;
+        }
+        select {
+            padding: 0.5rem;
+            margin: 0.5rem;
+            font-size: 1rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            background: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 0.75rem;
+            text-align: center;
+        }
+        th {
+            background-color: #0077cc;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>Delta Flights</h1>
+
+    <label for="srcSelect">From:</label>
+    <select id="srcSelect" onchange="filterTable()">
+        <option value="">All</option>
+        <option value="AMS">AMS</option><option value="ATL">ATL</option><option value="DTW">DTW</option><option value="JFK">JFK</option><option value="LAX">LAX</option><option value="MSP">MSP</option><option value="PDX">PDX</option><option value="SEA">SEA</option><option value="SLC">SLC</option><option value="SYD">SYD</option><option value="YYZ">YYZ</option>
+    </select>
+
+    <label for="dstSelect">To:</label>
+    <select id="dstSelect" onchange="filterTable()">
+        <option value="">All</option>
+        <option value="AMS">AMS</option><option value="ATL">ATL</option><option value="DTW">DTW</option><option value="JFK">JFK</option><option value="LAX">LAX</option><option value="MSP">MSP</option><option value="PDX">PDX</option><option value="SEA">SEA</option><option value="SLC">SLC</option><option value="SYD">SYD</option><option value="YYZ">YYZ</option>
+    </select>
+
+    <table id="flightTable">
+        <thead>
+            <tr>
+                <th>Flight No</th>
+                <th>From</th>
+                <th>To</th>
+                <th>Departure</th>
+                <th>Arrival</th>
+                <th>Duration (min)</th>
+            </tr>
+        </thead>
+        <tbody>
+    
+            <tr>
+                <td>DL1521</td>
+                <td>MSP</td>
+                <td>YYZ</td>
+                <td>08:50</td>
+                <td>11:55</td>
+                <td>185</td>
+            </tr>
+        
+            <tr>
+                <td>DL2131</td>
+                <td>MSP</td>
+                <td>YYZ</td>
+                <td>20:20</td>
+                <td>23:23</td>
+                <td>183</td>
+            </tr>
+        
+            <tr>
+                <td>DL5001</td>
+                <td>MSP</td>
+                <td>YYZ</td>
+                <td>15:22</td>
+                <td>18:34</td>
+                <td>192</td>
+            </tr>
+        
+            <tr>
+                <td>DL2132</td>
+                <td>YYZ</td>
+                <td>MSP</td>
+                <td>06:30</td>
+                <td>07:50</td>
+                <td>80</td>
+            </tr>
+        
+            <tr>
+                <td>DL4952</td>
+                <td>YYZ</td>
+                <td>MSP</td>
+                <td>19:24</td>
+                <td>20:46</td>
+                <td>82</td>
+            </tr>
+        
+            <tr>
+                <td>DL1444</td>
+                <td>YYZ</td>
+                <td>MSP</td>
+                <td>13:04</td>
+                <td>14:17</td>
+                <td>73</td>
+            </tr>
+        
+            <tr>
+                <td>DL2132</td>
+                <td>YYZ</td>
+                <td>MSP</td>
+                <td>06:30</td>
+                <td>07:50</td>
+                <td>80</td>
+            </tr>
+        
+            <tr>
+                <td>DL2415</td>
+                <td>MSP</td>
+                <td>PDX</td>
+                <td>09:10</td>
+                <td>10:48</td>
+                <td>98</td>
+            </tr>
+        
+            <tr>
+                <td>DL2167</td>
+                <td>MSP</td>
+                <td>PDX</td>
+                <td>11:06</td>
+                <td>12:41</td>
+                <td>95</td>
+            </tr>
+        
+            <tr>
+                <td>DL1661</td>
+                <td>MSP</td>
+                <td>PDX</td>
+                <td>14:20</td>
+                <td>15:54</td>
+                <td>94</td>
+            </tr>
+        
+            <tr>
+                <td>DL2151</td>
+                <td>MSP</td>
+                <td>PDX</td>
+                <td>18:44</td>
+                <td>20:24</td>
+                <td>98</td>
+            </tr>
+        
+            <tr>
+                <td>DL41</td>
+                <td>LAX</td>
+                <td>SYD</td>
+                <td>22:40</td>
+                <td>06:35</td>
+                <td>1915</td>
+            </tr>
+        
+            <tr>
+                <td>DL40</td>
+                <td>SYD</td>
+                <td>LAX</td>
+                <td>09:25</td>
+                <td>06:20</td>
+                <td>-185</td>
+            </tr>
+        
+            <tr>
+                <td>DL160</td>
+                <td>MSP</td>
+                <td>AMS</td>
+                <td>16:00</td>
+                <td>06:55</td>
+                <td>895</td>
+            </tr>
+        
+            <tr>
+                <td>DL162</td>
+                <td>MSP</td>
+                <td>AMS</td>
+                <td>20:05</td>
+                <td>11:20</td>
+                <td>915</td>
+            </tr>
+        
+            <tr>
+                <td>DL164</td>
+                <td>MSP</td>
+                <td>AMS</td>
+                <td>21:50</td>
+                <td>13:00</td>
+                <td>910</td>
+            </tr>
+        
+            <tr>
+                <td>DL9391</td>
+                <td>AMS</td>
+                <td>MSP</td>
+                <td>10:45</td>
+                <td>12:25</td>
+                <td>100</td>
+            </tr>
+        
+            <tr>
+                <td>DL165</td>
+                <td>AMS</td>
+                <td>MSP</td>
+                <td>15:10</td>
+                <td>17:10</td>
+                <td>120</td>
+            </tr>
+        
+            <tr>
+                <td>DL163</td>
+                <td>AMS</td>
+                <td>MSP</td>
+                <td>12:55</td>
+                <td>14:55</td>
+                <td>120</td>
+            </tr>
+        
+            <tr>
+                <td>DL161</td>
+                <td>AMS</td>
+                <td>MSP</td>
+                <td>09:40</td>
+                <td>11:20</td>
+                <td>100</td>
+            </tr>
+        
+            <tr>
+                <td>DL165</td>
+                <td>AMS</td>
+                <td>MSP</td>
+                <td>15:10</td>
+                <td>17:10</td>
+                <td>120</td>
+            </tr>
+        
+            <tr>
+                <td>DL2275</td>
+                <td>PDX</td>
+                <td>SEA</td>
+                <td>07:15</td>
+                <td>08:24</td>
+                <td>69</td>
+            </tr>
+        
+            <tr>
+                <td>DL3802</td>
+                <td>PDX</td>
+                <td>SEA</td>
+                <td>14:20</td>
+                <td>15:32</td>
+                <td>72</td>
+            </tr>
+        
+            <tr>
+                <td>DL3752</td>
+                <td>PDX</td>
+                <td>SEA</td>
+                <td>05:18</td>
+                <td>06:27</td>
+                <td>69</td>
+            </tr>
+        
+            <tr>
+                <td>DL3818</td>
+                <td>PDX</td>
+                <td>SEA</td>
+                <td>11:15</td>
+                <td>12:31</td>
+                <td>76</td>
+            </tr>
+        
+            <tr>
+                <td>DL3953</td>
+                <td>SEA</td>
+                <td>PDX</td>
+                <td>07:26</td>
+                <td>08:30</td>
+                <td>64</td>
+            </tr>
+        
+            <tr>
+                <td>DL4065</td>
+                <td>SEA</td>
+                <td>PDX</td>
+                <td>13:50</td>
+                <td>14:58</td>
+                <td>68</td>
+            </tr>
+        
+            <tr>
+                <td>DL3802</td>
+                <td>SEA</td>
+                <td>PDX</td>
+                <td>11:35</td>
+                <td>12:48</td>
+                <td>73</td>
+            </tr>
+        
+            <tr>
+                <td>DL3818</td>
+                <td>SEA</td>
+                <td>PDX</td>
+                <td>09:33</td>
+                <td>10:35</td>
+                <td>62</td>
+            </tr>
+        
+            <tr>
+                <td>DL3232</td>
+                <td>SLC</td>
+                <td>PDX</td>
+                <td>08:01</td>
+                <td>08:55</td>
+                <td>54</td>
+            </tr>
+        
+            <tr>
+                <td>DL1209</td>
+                <td>SLC</td>
+                <td>PDX</td>
+                <td>11:25</td>
+                <td>12:22</td>
+                <td>57</td>
+            </tr>
+        
+            <tr>
+                <td>DL3234</td>
+                <td>SLC</td>
+                <td>PDX</td>
+                <td>15:08</td>
+                <td>16:01</td>
+                <td>53</td>
+            </tr>
+        
+            <tr>
+                <td>DL1373</td>
+                <td>SLC</td>
+                <td>PDX</td>
+                <td>21:45</td>
+                <td>22:37</td>
+                <td>52</td>
+            </tr>
+        
+            <tr>
+                <td>DL1209</td>
+                <td>PDX</td>
+                <td>SLC</td>
+                <td>13:28</td>
+                <td>16:25</td>
+                <td>177</td>
+            </tr>
+        
+            <tr>
+                <td>DL3232</td>
+                <td>PDX</td>
+                <td>SLC</td>
+                <td>09:51</td>
+                <td>12:45</td>
+                <td>174</td>
+            </tr>
+        
+            <tr>
+                <td>DL3234</td>
+                <td>PDX</td>
+                <td>SLC</td>
+                <td>17:06</td>
+                <td>20:00</td>
+                <td>174</td>
+            </tr>
+        
+            <tr>
+                <td>DL1270</td>
+                <td>PDX</td>
+                <td>SLC</td>
+                <td>05:30</td>
+                <td>08:20</td>
+                <td>170</td>
+            </tr>
+        
+            <tr>
+                <td>DL972</td>
+                <td>PDX</td>
+                <td>ATL</td>
+                <td>23:00</td>
+                <td>06:38</td>
+                <td>458</td>
+            </tr>
+        
+            <tr>
+                <td>DL662</td>
+                <td>PDX</td>
+                <td>ATL</td>
+                <td>06:00</td>
+                <td>13:45</td>
+                <td>465</td>
+            </tr>
+        
+            <tr>
+                <td>DL539</td>
+                <td>PDX</td>
+                <td>ATL</td>
+                <td>11:20</td>
+                <td>19:10</td>
+                <td>470</td>
+            </tr>
+        
+            <tr>
+                <td>DL539</td>
+                <td>ATL</td>
+                <td>PDX</td>
+                <td>08:10</td>
+                <td>10:09</td>
+                <td>119</td>
+            </tr>
+        
+            <tr>
+                <td>DL675</td>
+                <td>ATL</td>
+                <td>PDX</td>
+                <td>10:56</td>
+                <td>12:55</td>
+                <td>119</td>
+            </tr>
+        
+            <tr>
+                <td>DL503</td>
+                <td>ATL</td>
+                <td>PDX</td>
+                <td>16:59</td>
+                <td>19:02</td>
+                <td>123</td>
+            </tr>
+        
+            <tr>
+                <td>DL691</td>
+                <td>ATL</td>
+                <td>PDX</td>
+                <td>19:43</td>
+                <td>21:50</td>
+                <td>127</td>
+            </tr>
+        
+            <tr>
+                <td>DL2171</td>
+                <td>PDX</td>
+                <td>DTW</td>
+                <td>11:55</td>
+                <td>19:08</td>
+                <td>433</td>
+            </tr>
+        
+            <tr>
+                <td>DL2171</td>
+                <td>DTW</td>
+                <td>PDX</td>
+                <td>09:04</td>
+                <td>10:44</td>
+                <td>100</td>
+            </tr>
+        
+            <tr>
+                <td>DL972</td>
+                <td>PDX</td>
+                <td>ATL</td>
+                <td>23:00</td>
+                <td>06:38</td>
+                <td>458</td>
+            </tr>
+        
+            <tr>
+                <td>DL662</td>
+                <td>PDX</td>
+                <td>ATL</td>
+                <td>06:00</td>
+                <td>13:45</td>
+                <td>465</td>
+            </tr>
+        
+            <tr>
+                <td>DL539</td>
+                <td>PDX</td>
+                <td>ATL</td>
+                <td>11:20</td>
+                <td>19:10</td>
+                <td>470</td>
+            </tr>
+        
+            <tr>
+                <td>DL539</td>
+                <td>ATL</td>
+                <td>PDX</td>
+                <td>08:10</td>
+                <td>10:09</td>
+                <td>119</td>
+            </tr>
+        
+            <tr>
+                <td>DL675</td>
+                <td>ATL</td>
+                <td>PDX</td>
+                <td>10:56</td>
+                <td>12:55</td>
+                <td>119</td>
+            </tr>
+        
+            <tr>
+                <td>DL503</td>
+                <td>ATL</td>
+                <td>PDX</td>
+                <td>16:59</td>
+                <td>19:02</td>
+                <td>123</td>
+            </tr>
+        
+            <tr>
+                <td>DL691</td>
+                <td>ATL</td>
+                <td>PDX</td>
+                <td>19:43</td>
+                <td>21:50</td>
+                <td>127</td>
+            </tr>
+        
+            <tr>
+                <td>DL451</td>
+                <td>PDX</td>
+                <td>JFK</td>
+                <td>06:55</td>
+                <td>15:29</td>
+                <td>514</td>
+            </tr>
+        
+            <tr>
+                <td>DL1574</td>
+                <td>PDX</td>
+                <td>JFK</td>
+                <td>13:25</td>
+                <td>22:02</td>
+                <td>517</td>
+            </tr>
+        
+            <tr>
+                <td>DL1574</td>
+                <td>JFK</td>
+                <td>PDX</td>
+                <td>09:00</td>
+                <td>12:05</td>
+                <td>185</td>
+            </tr>
+        
+            <tr>
+                <td>DL684</td>
+                <td>JFK</td>
+                <td>PDX</td>
+                <td>18:10</td>
+                <td>21:30</td>
+                <td>200</td>
+            </tr>
+        
+        </tbody>
+    </table>
+
+    <script>
+        function filterTable() {
+            const srcFilter = document.getElementById('srcSelect').value;
+            const dstFilter = document.getElementById('dstSelect').value;
+            const rows = document.querySelectorAll('#flightTable tbody tr');
+            const uniqueDestinations = new Set();
+            const currentDstFilter = dstSelect.value;
+            rows.forEach(row => {
+                const src = row.cells[1].textContent;
+                const dst = row.cells[2].textContent;
+                // no need to use dstFilter here. 
+                const show = (!srcFilter || src === srcFilter) ;
+                if (show)
+                    uniqueDestinations.add(dst);
+                row.style.display = show ? '' : 'none';
+            });
+            console.log("test");
+            console.log(uniqueDestinations);
+                const allOption = document.createElement('option');
+                allOption.value = '';
+                allOption.textContent = 'All';
+                dstSelect=document.getElementById('dstSelect');
+                dstSelect.innerHTML='';
+                dstSelect.appendChild(allOption);
+                const sortedDestinations = Array.from(uniqueDestinations).sort();
+                sortedDestinations.forEach(dst => {
+                    const option = document.createElement('option');
+                    option.value = dst;
+                    option.textContent = dst;
+                    dstSelect.appendChild(option);
+                });
+                if (uniqueDestinations.has(currentDstFilter)) {
+                    dstSelect.value = currentDstFilter;
+                } else {
+                    dstSelect.value = ''; // Reset to 'All' if the previous selection is no longer valid
+                }
+                const finalDstFilter = dstSelect.value; // Get the value after repopulating/re-selecting
+
+                rows.forEach(row => {
+                const src = row.cells[1].textContent;
+                const dst = row.cells[2].textContent;
+                const show = (!srcFilter || src === srcFilter) && (!finalDstFilter || dst === finalDstFilter);
+                row.style.display = show ? '' : 'none';
+    });
+        }
+        function filterTableD() {
+            const srcFilter = document.getElementById('srcSelect').value;
+            const dstFilter = document.getElementById('dstSelect').value;
+            const rows = document.querySelectorAll('#flightTable tbody tr');
+            rows.forEach(row => {
+                const src = row.cells[1].textContent;
+                const dst = row.cells[2].textContent;
+                const show = (!srcFilter || src === srcFilter) && (!dstFilter || dst === dstFilter);
+                row.style.display = show ? '' : 'none';
+            });
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const dstSelect = document.getElementById('dstSelect');
+            dstSelect.value = document.getElementById('srcSelect');
+            filterTable();
+        });
+    </script>
+</body>
+</html>
