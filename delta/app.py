@@ -11,6 +11,60 @@ def get_connection():
     conn = sqlite3.connect(DB)
     conn.row_factory = sqlite3.Row
     return conn
+@app.route('/view')
+def view_page2():
+    # Initialize lists for unique sources and destinations
+    src_list = set()
+    dst_list = set()
+    rows_data = [] # To store all flight data as lists (matching row[0], row[1] etc.)
+
+    try:
+        conn = sqlite3.connect(DB)
+        conn.row_factory = sqlite3.Row # Allows access by column name
+        cursor = conn.cursor()
+        
+        # Fetch all flights
+        cursor.execute("SELECT flightno, src, dst, departure, arrival, duration FROM flights ORDER BY src, dst")
+        all_flights = cursor.fetchall()
+        conn.close()
+
+        for flight in all_flights:
+            # Add src and dst to their respective sets to ensure uniqueness
+            src_list.add(flight['src'])
+            dst_list.add(flight['dst'])
+            
+            # Append the flight data as a list of values
+            # Ensure the order matches your HTML table columns: Flight No, From, To, Departure, Arrival, Duration
+            
+            rows_data.append([
+                flight['flightno'],
+                flight['src'],
+                flight['dst'],
+                datetime.strptime(flight['departure'], '%Y-%m-%d %H:%M:%S').strftime('%H:%M'),
+                datetime.strptime(flight['arrival'], '%Y-%m-%d %H:%M:%S').strftime('%H:%M'),
+                flight['duration']
+            ])
+
+    except Exception as e:
+        print(f"Error fetching data for view_page2: {e}")
+        # In a real app, you might want to return an error page or message
+        return "Error loading data", 500
+
+    # Convert sets to sorted lists for consistent dropdown order
+    sorted_src_list = sorted(list(src_list))
+    sorted_dst_list = sorted(list(dst_list))
+
+    # Prepare the 'data' dictionary for the template
+    template_data = {
+        'srclist': sorted_src_list,
+        'dstlist': sorted_dst_list,
+        'rows': rows_data
+    }
+
+    # Render the template, passing the prepared data
+    return render_template("view2.html", data=template_data)
+    
+
 @app.route('/')
 def view_page():
     conn = get_connection()
