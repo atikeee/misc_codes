@@ -1,0 +1,5 @@
+usage:
+decrypt
+FileEncryption.exe d dir 8hex
+encrypt
+FileEncryption.exe e dir 8hex

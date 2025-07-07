@@ -7,11 +7,8 @@ app = Flask(__name__)
 # HTML will be injected from a separate file
 
 DB = "flights.db"
-def get_connection():
-    conn = sqlite3.connect(DB)
-    conn.row_factory = sqlite3.Row
-    return conn
-@app.route('/view')
+
+@app.route('/delta/view')
 def view_page2():
     # Initialize lists for unique sources and destinations
     src_list = set()
@@ -62,12 +59,13 @@ def view_page2():
     }
 
     # Render the template, passing the prepared data
-    return render_template("view2.html", data=template_data)
+    return render_template("delta_view2.html", data=template_data)
     
 
-@app.route('/')
+@app.route('/delta/')
 def view_page():
-    conn = get_connection()
+    conn = sqlite3.connect(DB)
+    conn.row_factory = sqlite3.Row
     cur = conn.cursor()
     cur.execute("""
         SELECT id,flightno, src, dst, departure, arrival, duration
@@ -95,10 +93,10 @@ def view_page():
             'id':row['id']
         })
 
-    return render_template("view.html", data=data_by_dest)
+    return render_template("delta_view.html", data=data_by_dest)
 
     
-@app.route("/add", methods=["GET", "POST"])
+@app.route("/delta/add", methods=["GET", "POST"])
 def index():
     message = ""
     if request.method == "POST":
@@ -125,11 +123,11 @@ def index():
             message = "✅ Flight added successfully!"
         except Exception as e:
             message = f"❌ Error: {e}"
-    print('xxxxxxxxxxxxxxxxx')
-    return render_template("update_form.html",message=message)
+    
+    return render_template("delta_update_form.html",message=message)
     #return render_template_string(HTML_TEMPLATE, message=message)
     
-@app.route("/delete_flight/<int:flight_id>", methods=["POST"])
+@app.route("/delta/delete_flight/<int:flight_id>", methods=["POST"])
 def delete_flight(flight_id):
     try:
         conn = sqlite3.connect(DB)
@@ -144,7 +142,7 @@ def delete_flight(flight_id):
         # Return a JSON response indicating failure with an error message
         return jsonify(success=False, message=str(e)), 500 # Return 500 status for server error
 # --- NEW ROUTE FOR PARSING FLIGHTS VIA WEB FORM ---
-@app.route("/parse_flights", methods=["GET", "POST"])
+@app.route("/delta/parse_flights", methods=["GET", "POST"])
 def parse_flights_page():
     message = ""
     if request.method == "POST":
@@ -173,6 +171,7 @@ def parse_flights_page():
                         'access_key': API_KEY,
                         'dep_iata': current_src,
                         'arr_iata': current_dst,
+                        'airline_iata':'DL',
                         'limit': 20, # Limit results to 20 per query
                         'flight_date': query_date # Add flight date to params
                     }
@@ -247,6 +246,6 @@ def parse_flights_page():
                 message = f"❌ Network Error: Could not connect to API. {req_e}"
             except Exception as e:
                 message = f"❌ An unexpected error occurred: {e}"
-    return render_template("parseflights.html", message=message)
+    return render_template("delta_parseflights.html", message=message)
 if __name__ == "__main__":
     app.run(debug=True)

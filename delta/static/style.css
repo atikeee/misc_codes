@@ -94,21 +94,23 @@ table tbody tr:last-child td:last-child {
 
 /* Link styling */
 a {
-    display: inline-block;
+    display: block; 
     margin-top: 30px;
     padding: 12px 25px;
     background-color: #2ecc71; /* Green button */
-    color: white;
     text-decoration: none;
     border-radius: 8px;
     font-weight: 600;
     transition: background-color 0.3s ease, transform 0.2s ease;
     box-shadow: 0 4px 8px rgba(46, 204, 113, 0.3);
+    text-align: center; 
+    color: #3498db; 
 }
 
 a:hover {
     background-color: #27ae60; /* Darker green on hover */
     transform: translateY(-2px); /* Slight lift effect */
+    text-decoration: underline;
 }
 
 a:active {
@@ -254,3 +256,10 @@ select {
     margin: 0.5rem;
     font-size: 1rem;
 }
+form { display: flex; flex-direction: column; gap: 15px; }
+button { background-color: #3498db; color: white; padding: 12px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 1.1em; transition: background-color 0.3s ease; }
+button:hover { background-color: #2980b9; }
+.status-message { margin-top: 25px; padding: 15px; border-radius: 8px; font-weight: bold; text-align: center; }
+.status-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+.status-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+.status-warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }label { font-weight: bold; color: #34495e; }

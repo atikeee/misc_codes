@@ -94,7 +94,7 @@
         try {
             // Make a fetch request to your Flask backend delete endpoint
             // You'll need to create a Flask route like /delete_flight/<int:id>
-            const response = await fetch(`/delete_flight/${idToDelete}`, {
+            const response = await fetch(`/delta/delete_flight/${idToDelete}`, {
                 method: 'POST', // Using POST for simplicity, DELETE is also an option
                 headers: {
                     'Content-Type': 'application/json'
