@@ -10,44 +10,53 @@ from cryptography.hazmat.backends import default_backend
 import base64
 
 # --- Configuration ---
-SALT_FILE = 'salt.key' # The file where the encryption key will be stored
 HEADER_SIZE = 8192 # Number of bytes to scramble/unscramble at the beginning of the file (e.g., 8KB)
 
-def get_or_generate_encryption_key():
+def read_encryption_key(key_file_path: str) -> bytes:
     """
-    Reads the encryption key from SALT_FILE or generates a new one if the file doesn't exist.
-    Saves the generated key to SALT_FILE.
-    The key generated is a URL-safe base64 encoded 32-byte key suitable for Fernet.
-    If an existing key is found but is invalid, it will be deleted and a new one generated.
+    Reads the encryption key from the specified file.
+    Raises FileNotFoundError if the file does not exist.
+    Raises ValueError if the key format is invalid.
     """
-    encryption_key = None
-    if os.path.exists(SALT_FILE):
-        try:
-            with open(SALT_FILE, 'rb') as f:
-                loaded_key = f.read()
-            # Attempt to validate the key by creating a Fernet object
-            # This will raise a ValueError if the key is not valid Fernet format
-            Fernet(loaded_key)
-            encryption_key = loaded_key
-            print(f"Loaded encryption key from '{SALT_FILE}'.")
-        except ValueError:
-            print(f"WARNING: '{SALT_FILE}' found but contains an invalid Fernet key. Deleting and generating a new one.")
-            os.remove(SALT_FILE) # Delete the invalid key file
-        except Exception as e:
-            print(f"ERROR: Could not read or validate '{SALT_FILE}': {e}. Generating a new key.")
-            if os.path.exists(SALT_FILE):
-                os.remove(SALT_FILE) # Attempt to remove problematic file
+    if not os.path.exists(key_file_path):
+        raise FileNotFoundError(f"Error: Key file '{key_file_path}' not found.")
 
-    if encryption_key is None:
-        # Generate a new Fernet key (which is already URL-safe base64 encoded)
+    try:
+        with open(key_file_path, 'rb') as f:
+            loaded_key = f.read()
+        # Attempt to validate the key by creating a Fernet object
+        Fernet(loaded_key) # This will raise a ValueError if the key is not valid Fernet format
+        print(f"Loaded encryption key from '{key_file_path}'.")
+        return loaded_key
+    except ValueError as e:
+        raise ValueError(f"Error: Key file '{key_file_path}' contains an invalid Fernet key: {e}")
+    except Exception as e:
+        raise IOError(f"Error: Could not read key file '{key_file_path}': {e}")
+
+def generate_new_encryption_key(output_file_path: str, force_overwrite: bool = False):
+    """
+    Generates a new Fernet encryption key and saves it to the specified file.
+    Asks for confirmation if the file already exists, unless force_overwrite is True.
+    """
+    if os.path.exists(output_file_path) and not force_overwrite:
+        confirm = input(f"WARNING: Key file '{output_file_path}' already exists. Overwrite? (y/N): ").lower()
+        if confirm != 'y':
+            print("Key generation cancelled.")
+            sys.exit(0)
+        else:
+            print(f"Overwriting existing key file '{output_file_path}'.")
+
+    try:
         encryption_key = Fernet.generate_key()
-        with open(SALT_FILE, 'wb') as f:
+        with open(output_file_path, 'wb') as f:
             f.write(encryption_key)
-        print(f"Generated new encryption key and saved to '{SALT_FILE}'.")
-        print("!!! IMPORTANT: Keep this 'salt.key' file safe and do not lose it! !!!")
+        print(f"Successfully generated new encryption key and saved to '{output_file_path}'.")
+        print("!!! IMPORTANT: Keep this key file safe and do not lose it! !!!")
         print("!!! This file IS your encryption key. If you lose or change this file,")
         print("!!! you will NOT be able to decrypt your files. BACK IT UP SECURELY! !!!")
-    return encryption_key
+    except Exception as e:
+        print(f"Error: Could not generate or save key to '{output_file_path}': {e}")
+        sys.exit(1)
 
 def encrypt_file_in_place(file_path: str, fernet_key: Fernet):
     """
@@ -205,25 +214,89 @@ def main():
         formatter_class=argparse.RawTextHelpFormatter # Preserves formatting for descriptions
     )
 
-    parser.add_argument(
-        'mode',
-        choices=['lock', 'unlock', 'scramble', 'unscramble'],
-        help="""Operation mode:
-  lock     - Full encryption of file(s)/folder(s) in-place (.enc extension).
-  unlock   - Decryption of encrypted file(s)/folder(s) in-place (removes .enc).
-  scramble - Scrambles the header of file(s)/folder(s) in-place (.s extension).
-  unscramble - Unscrambles the header of scrambled file(s)/folder(s) in-place (removes .s)."""
+    # Use subparsers for different command structures
+    subparsers = parser.add_subparsers(dest='command', help='Available commands')
+
+    # Parser for 'generate-key' command
+    generate_parser = subparsers.add_parser(
+        'generate-key',
+        help='Generate a new encryption key file.',
+        description="Generates a new encryption key and saves it to the specified path."
     )
-    parser.add_argument(
+    generate_parser.add_argument(
+        'output_path',
+        type=str,
+        help="Full path where the new key file will be saved."
+    )
+    generate_parser.add_argument(
+        '-f', '--force',
+        action='store_true',
+        help="Overwrite the key file if it already exists without prompt."
+    )
+
+    # Parent parser for operations that require a key file and a path
+    process_parent_parser = argparse.ArgumentParser(add_help=False) # Don't add help here, will be added by sub-subparsers
+    process_parent_parser.add_argument(
         'path',
         type=str,
         help="Full path to the file or folder to process."
     )
+    process_parent_parser.add_argument(
+        '-k', '--key-file',
+        type=str,
+        required=True, # Key file is now mandatory for these operations
+        help="Path to the encryption key file."
+    )
+
+    # Parser for 'lock' command
+    lock_parser = subparsers.add_parser(
+        'lock',
+        parents=[process_parent_parser],
+        help='Full encryption of file(s)/folder(s) in-place (.enc extension).',
+        description="Performs full AES encryption on the specified file(s) or folder(s) in-place. "
+                    "Original files are overwritten with encrypted data and renamed with a '.enc' extension."
+    )
+
+    # Parser for 'unlock' command
+    unlock_parser = subparsers.add_parser(
+        'unlock',
+        parents=[process_parent_parser],
+        help='Decryption of encrypted file(s)/folder(s) in-place (removes .enc).',
+        description="Decrypts previously encrypted file(s) or folder(s) in-place. "
+                    "Encrypted files are overwritten with original data and '.enc' extension is removed."
+    )
+
+    # Parser for 'scramble' command
+    scramble_parser = subparsers.add_parser(
+        'scramble',
+        parents=[process_parent_parser],
+        help='Scrambles the header of file(s)/folder(s) in-place (.s extension).',
+        description="Modifies the header of specified file(s) or folder(s) in-place, making them unreadable "
+                    "by most applications. Files are renamed with a '.s' extension. This is faster than full encryption."
+    )
+
+    # Parser for 'unscramble' command
+    unscramble_parser = subparsers.add_parser(
+        'unscramble',
+        parents=[process_parent_parser],
+        help='Unscrambles the header of scrambled file(s)/folder(s) in-place (removes .s).',
+        description="Restores the original header of previously scrambled file(s) or folder(s) in-place. "
+                    "Scrambled files are overwritten with original data and '.s' extension is removed."
+    )
 
     args = parser.parse_args()
 
-    # Get or generate the encryption key (from salt.key)
-    encryption_key = get_or_generate_encryption_key()
+    # Handle 'generate-key' command separately as it doesn't require an existing key
+    if args.command == 'generate-key':
+        generate_new_encryption_key(args.output_path, args.force)
+        sys.exit(0) # Exit after generating key
+
+    # For other commands, a key file is required
+    try:
+        encryption_key = read_encryption_key(args.key_file)
+    except (FileNotFoundError, ValueError, IOError) as e:
+        print(e)
+        sys.exit(1)
 
     # Initialize Fernet key object and scramble key bytes
     fernet_key_obj = Fernet(encryption_key)
@@ -233,8 +306,9 @@ def main():
     if not os.path.exists(source_path):
         print(f"Error: Path '{source_path}' does not exist. Exiting.")
         sys.exit(1)
-
-    if args.mode == 'lock':
+    
+    # Execute the chosen command
+    if args.command == 'lock':
         if os.path.isfile(source_path):
             print(f"\nLocking file in place: '{source_path}'")
             encrypt_file_in_place(source_path, fernet_key_obj)
@@ -244,7 +318,7 @@ def main():
             print("Invalid source path. Must be a file or a directory. Exiting.")
             sys.exit(1)
 
-    elif args.mode == 'unlock':
+    elif args.command == 'unlock':
         if os.path.isfile(source_path):
             print(f"\nUnlocking file in place: '{source_path}'")
             decrypt_file_in_place(source_path, fernet_key_obj)
@@ -254,7 +328,7 @@ def main():
             print("Invalid source path. Must be a file or a directory. Exiting.")
             sys.exit(1)
 
-    elif args.mode == 'scramble':
+    elif args.command == 'scramble':
         if os.path.isfile(source_path):
             print(f"\nScrambling header of file: '{source_path}'")
             scramble_file_header(source_path, scramble_key_bytes)
@@ -264,7 +338,7 @@ def main():
             print("Invalid source path. Must be a file or a directory. Exiting.")
             sys.exit(1)
 
-    elif args.mode == 'unscramble':
+    elif args.command == 'unscramble':
         if os.path.isfile(source_path):
             print(f"\nUnscrambling header of file: '{source_path}'")
             unscramble_file_header(source_path, scramble_key_bytes)
