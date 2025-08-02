@@ -7,10 +7,14 @@ from PIL.Image import Resampling
 
 import platform
 import datetime
+import rawpy
+import imageio
 
 import json
 
 CONFIG_FILE = "image_viewer_config.json"
+RAW_EXTS = [".cr2", ".cr3", ".arw", ".nef", ".rw2"]
+
 
 def load_config():
     if os.path.exists(CONFIG_FILE):
@@ -44,6 +48,7 @@ def get_file_creation_time(path):
 
 class ImageViewerApp:
     def __init__(self, root):
+        self.rawflag = False
         self.root = root
         self.filename=""
         self.created=""
@@ -82,12 +87,14 @@ class ImageViewerApp:
         top_buttons.pack(side=tk.TOP, fill=tk.X)
 
         tk.Button(top_buttons, text="Browse Folder (o)", command=self.browse_folder).pack(side=tk.LEFT, padx=5)
-        #tk.Button(top_buttons, text="Browse Raw", command=self.browse_folder_raw).pack(side=tk.LEFT, padx=5)
+        tk.Button(top_buttons, text="Browse Raw", command=self.browse_folder_raw).pack(side=tk.LEFT, padx=5)
         tk.Button(top_buttons, text="Previous (b)", command=self.prev_image).pack(side=tk.LEFT, padx=5)
         tk.Button(top_buttons, text="Next (n)", command=self.next_image).pack(side=tk.LEFT, padx=5)
         tk.Button(top_buttons, text="Delete (d)", command=self.delete_current_image).pack(side=tk.LEFT, padx=5)
         tk.Button(top_buttons, text="Rotate (r)", command=self.rotate_image).pack(side=tk.LEFT, padx=5)
         tk.Button(top_buttons, text="Move (m)", command=self.move_current_images).pack(side=tk.LEFT, padx=5)
+        tk.Button(top_buttons, text="Convert (c)", command=self.convert_raw_images).pack(side=tk.LEFT, padx=(5, 2))
+
         # Image display
         self.image_canvas = tk.Canvas(self.right_frame, bg="black")
         self.image_canvas.pack(fill=tk.BOTH, expand=True)
@@ -171,6 +178,8 @@ class ImageViewerApp:
 
 
     def browse_folder(self, event=None):
+        self.rawflag = False
+
         if self.is_typing(): return
         folder = filedialog.askdirectory()
         if not folder:
@@ -189,15 +198,54 @@ class ImageViewerApp:
         self.current_index = 0
         self.rotation_angle = 0
         self.show_image()
+        
+    def browse_folder_raw(self):
+        folder = filedialog.askdirectory()
+        if not folder:
+            return
 
+        raw_files = []
+        for ext in RAW_EXTS:
+            raw_files.extend(Path(folder).rglob(f"*{ext}"))
+
+        raw_files = sorted(str(p) for p in raw_files)
+
+        if not raw_files:
+            self.set_status("No RAW images found.")
+            return
+        self.rawflag = True
+
+        self.image_paths = raw_files
+        self.current_index = 0
+        self.selected_indices = set()
+        self.rotation_angle = 0
+
+        self.listbox.delete(0, tk.END)
+        for f in self.image_paths:
+            self.listbox.insert(tk.END, os.path.basename(f))
+
+        self.listbox.select_set(0)
+        self.listbox.event_generate("<<ListboxSelect>>")
+
+        self.set_status(f"Loaded {len(raw_files)} RAW files.")
+        self.show_image()
+        
     def show_image(self):
         if not self.image_paths:
             self.image_canvas.delete("all")
             return
-        print("showing image")
+
         image_path = self.image_paths[self.current_index]
+        self.filename = os.path.basename(image_path)
+        self.created = None
         try:
-            self.current_image = Image.open(image_path)
+            if self.rawflag and Path(image_path).suffix.lower() in RAW_EXTS:
+                with rawpy.imread(image_path) as raw:
+                    rgb = raw.postprocess()
+                self.current_image = Image.fromarray(rgb)
+                self.created = get_file_creation_time(image_path)  # RAW has no EXIF typically
+            else:
+                self.current_image = Image.open(image_path)
             #exif_data = {}
             #date_taken = None
             #try:
@@ -216,10 +264,10 @@ class ImageViewerApp:
 
             # Use file creation date if EXIF missing
             #if not date_taken:
-            date_taken = get_file_creation_time(image_path)
+            #date_taken = get_file_creation_time(image_path)
                 
 
-            if self.rotation_angle != 0:
+            if not self.rawflag and self.rotation_angle != 0:
                 self.current_image = self.current_image.rotate(self.rotation_angle, expand=True)
 
             # Resize to fit canvas while preserving aspect ratio
@@ -328,6 +376,7 @@ class ImageViewerApp:
         if self.is_typing(): return
         if not self.image_paths:
             return
+        if self.rawflag: return
 
         path = self.image_paths[self.current_index]
         try:
@@ -448,6 +497,59 @@ class ImageViewerApp:
                 self.set_status(f"{self.filename} ({self.created})", f"Moved {len(moved_files)} files.")
             else:
                 self.set_status(f"{self.filename} ({self.created})", "All selected files already exist.")
+    def convert_raw_images(self):
+        if self.is_typing():
+            return
+        indices = self.selected_indices if self.selected_indices else [self.current_index]
+
+        postfix = self.move_postfix_entry.get().strip()
+        base_path = self.move_base_entry.get().strip()
+        if not postfix or not base_path:
+            self.set_status(self.filename, "Missing base path or postfix.")
+            return
+
+        
+        converted = []
+
+        for idx in sorted(indices):
+            src_path = Path(self.image_paths[idx])
+            if src_path.suffix.lower() not in RAW_EXTS:
+                continue
+
+            try:
+                # Load RAW and convert to JPEG
+                with rawpy.imread(str(src_path)) as raw:
+                    rgb = raw.postprocess()
+                output_img = Image.fromarray(rgb)
+
+                created = get_file_creation_time(str(src_path))
+                date_prefix = datetime.datetime.strptime(created, "%Y-%m-%d %I:%M %p").strftime("%Y%m%d")
+
+                if self.no_date_var.get():
+                    folder_name = postfix
+                else:
+                    folder_name = f"{date_prefix}_{postfix}"
+
+                dest_dir = Path(base_path) / folder_name
+                dest_dir.mkdir(parents=True, exist_ok=True)
+
+                dest_file = dest_dir / f"{src_path.stem}.jpg"
+                if dest_file.exists():
+                    self.set_status(src_path.name, "File already exists.")
+                    continue
+
+                output_img.save(dest_file, "JPEG", quality=95)
+                converted.append(dest_file.name)
+
+            except Exception as e:
+                print(f"Failed to convert {src_path}: {e}")
+                self.set_status(src_path.name, f"Conversion error: {e}")
+
+        if converted:
+            self.set_status(f"{len(converted)} RAW converted to JPEG")
+        else:
+            self.set_status("No RAW images converted.")
+            
 
     def is_typing(self):
         return isinstance(self.root.focus_get(), tk.Entry)  
