@@ -1,8 +1,9 @@
-import os,shutil
+import os,shutil#, piexif
 import tkinter as tk
 from tkinter import filedialog, Listbox, Scrollbar
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ExifTags
 from pathlib import Path
+from PIL.Image import Resampling
 
 import platform
 import datetime
@@ -81,6 +82,7 @@ class ImageViewerApp:
         top_buttons.pack(side=tk.TOP, fill=tk.X)
 
         tk.Button(top_buttons, text="Browse Folder (o)", command=self.browse_folder).pack(side=tk.LEFT, padx=5)
+        #tk.Button(top_buttons, text="Browse Raw", command=self.browse_folder_raw).pack(side=tk.LEFT, padx=5)
         tk.Button(top_buttons, text="Previous (b)", command=self.prev_image).pack(side=tk.LEFT, padx=5)
         tk.Button(top_buttons, text="Next (n)", command=self.next_image).pack(side=tk.LEFT, padx=5)
         tk.Button(top_buttons, text="Delete (d)", command=self.delete_current_image).pack(side=tk.LEFT, padx=5)
@@ -109,6 +111,10 @@ class ImageViewerApp:
 
         # Browse button
         tk.Button(control_row, text="📁", command=self.browse_destination).pack(side=tk.LEFT)
+        
+        self.no_date_var = tk.BooleanVar(value=False)
+        self.no_date_check = tk.Checkbutton(control_row, text="No Date", variable=self.no_date_var)
+        self.no_date_check.pack(side=tk.LEFT, padx=(5, 0))
 
         # Postfix
         tk.Label(control_row, text="Postfix:").pack(side=tk.LEFT, padx=(10, 0))
@@ -188,10 +194,30 @@ class ImageViewerApp:
         if not self.image_paths:
             self.image_canvas.delete("all")
             return
-
+        print("showing image")
         image_path = self.image_paths[self.current_index]
         try:
             self.current_image = Image.open(image_path)
+            #exif_data = {}
+            #date_taken = None
+            #try:
+            #    print(self.current_image.info)
+            #    exif_dict = piexif.load(self.current_image.info.get("exif", None))
+            #    print(exif_dict,"hhh")
+            #    date_taken = exif_dict["Exif"].get(piexif.ExifIFD.DateTimeOriginal)
+            #    if date_taken:
+            #        date_taken = date_taken.decode()
+            #        print("EXIF DateTimeOriginal:", date_taken)
+            #    else:
+            #        print("EXIF DateTimeOriginal not found.")
+            #except Exception as e:
+            #    print("piexif error:", e)
+
+
+            # Use file creation date if EXIF missing
+            #if not date_taken:
+            date_taken = get_file_creation_time(image_path)
+                
 
             if self.rotation_angle != 0:
                 self.current_image = self.current_image.rotate(self.rotation_angle, expand=True)
@@ -210,7 +236,9 @@ class ImageViewerApp:
                 new_height = canvas_height
                 new_width = int(canvas_height * img_ratio)
 
-            resized = self.current_image.resize((new_width, new_height), Image.LANCZOS)
+            #resized = self.current_image.resize((new_width, new_height), Image.LANCZOS)
+            
+            resized = self.current_image.resize((new_width, new_height), Resampling.LANCZOS)
             self.tk_image = ImageTk.PhotoImage(resized)
 
             self.image_canvas.delete("all")
@@ -220,11 +248,10 @@ class ImageViewerApp:
                 anchor=tk.CENTER,
                 image=self.tk_image
             )
-
             # Highlight selected image in list
-            self.listbox.select_clear(0, tk.END)
-            self.listbox.select_set(self.current_index)
-            self.listbox.see(self.current_index)
+            #self.listbox.select_clear(0, tk.END)
+            #self.listbox.select_set(self.current_index)
+            #self.listbox.see(self.current_index)
             # Highlight selection only if not multi-selecting
             if len(self.selected_indices) <= 1:
                 self.listbox.select_clear(0, tk.END)
@@ -365,14 +392,24 @@ class ImageViewerApp:
         for idx in sorted(indices_to_move, reverse=True):  # Reverse to avoid index shift
             src_path = Path(self.image_paths[idx])
             created = get_file_creation_time(str(src_path))
-            date_prefix = datetime.datetime.strptime(created, "%Y-%m-%d %I:%M %p").strftime("%Y%m%d")
-            postfix = self.move_postfix_entry.get().strip()
 
+            postfix = self.move_postfix_entry.get().strip()
+            created = get_file_creation_time(str(src_path))  # Keep this
+            date_prefix = datetime.datetime.strptime(created, "%Y-%m-%d %I:%M %p").strftime("%Y%m%d")
             base_path = self.move_base_entry.get().strip()
             if not postfix or not base_path:
                 self.set_status(f"{self.filename} ({self.created})", "Missing base path or postfix.")
                 return
-            dest_dir = Path(base_path) / f"{date_prefix}_{postfix}"
+            if self.no_date_var.get():
+                folder_name = postfix
+            else:
+                folder_name = f"{date_prefix}_{postfix}"
+
+            dest_dir = Path(base_path) / folder_name
+
+            
+            
+
 
             
             #postfix = self.config.get("move_postfix", "").strip()
