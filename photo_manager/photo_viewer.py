@@ -99,8 +99,12 @@ class ImageViewerApp:
 
         # Move base folder
         tk.Label(control_row, text="Destination:").pack(side=tk.LEFT)
-        self.move_base_entry = tk.Entry(control_row, width=25)
+        self.move_base_entry = tk.Entry(control_row, width=25, state="readonly")
+        self.move_base_entry.config(state="normal")
         self.move_base_entry.insert(0, self.config.get("move_base_path", ""))
+        self.move_base_entry.config(state="readonly")
+
+#        self.move_base_entry.insert(0, self.config.get("move_base_path", ""))
         self.move_base_entry.pack(side=tk.LEFT, padx=2)
 
         # Browse button
@@ -111,12 +115,15 @@ class ImageViewerApp:
         self.move_postfix_entry = tk.Entry(control_row, width=10)
         self.move_postfix_entry.insert(0, self.config.get("move_postfix", ""))
         self.move_postfix_entry.pack(side=tk.LEFT, padx=2)
+        self.move_postfix_entry.bind("<Return>", self.save_postfix_and_lock)
+        self.move_postfix_entry.bind("<Button-1>", self.unlock_postfix)
+
 
         # Save button
-        tk.Button(control_row, text="💾", command=self.save_move_settings).pack(side=tk.LEFT, padx=(5, 2))
+        #tk.Button(control_row, text="💾", command=self.save_move_settings).pack(side=tk.LEFT, padx=(5, 2))
 
         # Move button
-        tk.Button(control_row, text="📦 Move", command=self.move_current_images).pack(side=tk.LEFT, padx=(5, 0))
+        #tk.Button(control_row, text="📦 Move", command=self.move_current_images).pack(side=tk.LEFT, padx=(5, 0))
 
         # Key bindings
         self.root.bind("<Left>", self.prev_image)
@@ -145,6 +152,7 @@ class ImageViewerApp:
         self.selected_indices = list(selections)
         self.current_index = self.selected_indices[0]
         self.show_image()
+
 
 
 
@@ -217,6 +225,12 @@ class ImageViewerApp:
             self.listbox.select_clear(0, tk.END)
             self.listbox.select_set(self.current_index)
             self.listbox.see(self.current_index)
+            # Highlight selection only if not multi-selecting
+            if len(self.selected_indices) <= 1:
+                self.listbox.select_clear(0, tk.END)
+                self.listbox.select_set(self.current_index)
+                self.listbox.see(self.current_index)
+
             # Update status bar
             self.filename = os.path.basename(image_path)
             self.created = get_file_creation_time(image_path)
@@ -245,34 +259,43 @@ class ImageViewerApp:
         if not self.image_paths:
             return
 
-        current_path = Path(self.image_paths[self.current_index])
-        base_name = current_path.stem
-        folder = current_path.parent
+        indices_to_delete = self.selected_indices if self.selected_indices else [self.current_index]
+        deleted_files = []
 
-        try:
-            deleted_files = []
+        for idx in sorted(indices_to_delete, reverse=True):
+            current_path = Path(self.image_paths[idx])
+            base_name = current_path.stem
+            folder = current_path.parent
 
-            if self.raw_var.get():
-                for f in folder.iterdir():
-                    if f.stem == base_name:
-                        f.unlink()
-                        deleted_files.append(f.name)
-            else:
-                current_path.unlink()
-                deleted_files.append(current_path.name)
+            try:
+                if self.raw_var.get():
+                    for f in folder.iterdir():
+                        if f.stem == base_name and f.exists():
+                            f.unlink()
+                            deleted_files.append(f.name)
+                else:
+                    if current_path.exists():
+                        current_path.unlink()
+                        deleted_files.append(current_path.name)
 
-            print(f"Deleted: {', '.join(deleted_files)}")
+                del self.image_paths[idx]
+                self.listbox.delete(idx)
+            except Exception as e:
+                print(f"Error deleting {current_path}: {e}")
 
-            # Refresh list
-            del self.image_paths[self.current_index]
-            self.listbox.delete(self.current_index)
-            if self.current_index >= len(self.image_paths):
-                self.current_index = max(0, len(self.image_paths) - 1)
-            self.rotation_angle = 0
+        self.selected_indices = []
+        self.listbox.selection_clear(0, tk.END)
+
+        if self.image_paths:
+            self.current_index = min(indices_to_delete[0], len(self.image_paths) - 1)
+            self.listbox.select_set(self.current_index)
             self.show_image()
+        else:
+            self.image_canvas.delete("all")
+            self.status_label.config(text="All files deleted.")
 
-        except Exception as e:
-            print(f"Error deleting file: {e}")
+        if deleted_files:
+            self.set_status(f"{self.filename} ({self.created})", f"Deleted {len(deleted_files)} files.")
 
     def rotate_image(self, event=None):
         if self.is_typing(): return
@@ -294,13 +317,34 @@ class ImageViewerApp:
         self.config["move_postfix"] = self.move_postfix_entry.get().strip()
         save_config(self.config)
         print("Settings saved.")
+
     def browse_destination(self):
         folder = filedialog.askdirectory()
         if folder:
+            self.move_base_entry.config(state="normal")
             self.move_base_entry.delete(0, tk.END)
             self.move_base_entry.insert(0, folder)
+            self.move_base_entry.config(state="readonly")
+
+            self.config["move_base_path"] = folder
+            save_config(self.config)
 
 
+    def save_postfix_and_lock(self, event=None):
+        new_postfix = self.move_postfix_entry.get().strip()
+        self.config["move_postfix"] = new_postfix
+        save_config(self.config)
+        self.set_status(f"{self.filename} ({self.created})", f"Saved postfix: {new_postfix}")
+        self.move_postfix_entry.config(state="readonly")
+        # Return focus to root so hotkeys work
+        self.root.focus()
+
+    def unlock_postfix(self, event=None):
+        if self.move_postfix_entry["state"] == "readonly":
+            self.move_postfix_entry.config(state="normal")
+            self.move_postfix_entry.focus()
+            # Move cursor to end
+            self.move_postfix_entry.icursor(tk.END)
 
 
     def move_current_images(self, event=None):
@@ -322,8 +366,17 @@ class ImageViewerApp:
             src_path = Path(self.image_paths[idx])
             created = get_file_creation_time(str(src_path))
             date_prefix = datetime.datetime.strptime(created, "%Y-%m-%d %I:%M %p").strftime("%Y%m%d")
-            postfix = self.config.get("move_postfix", "").strip()
-            dest_dir = Path(self.config.get("move_base_path", "")) /  f"{date_prefix}_{postfix}"
+            postfix = self.move_postfix_entry.get().strip()
+
+            base_path = self.move_base_entry.get().strip()
+            if not postfix or not base_path:
+                self.set_status(f"{self.filename} ({self.created})", "Missing base path or postfix.")
+                return
+            dest_dir = Path(base_path) / f"{date_prefix}_{postfix}"
+
+            
+            #postfix = self.config.get("move_postfix", "").strip()
+            #dest_dir = Path(self.config.get("move_base_path", "")) /  f"{date_prefix}_{postfix}"
             dest_dir.mkdir(parents=True, exist_ok=True)
 
             files_to_move = [src_path]
@@ -342,17 +395,23 @@ class ImageViewerApp:
             del self.image_paths[idx]
             self.listbox.delete(idx)
 
-        self.selected_indices = []
-        if self.image_paths:
-            self.current_index = min(indices_to_move[0], len(self.image_paths) - 1)
-            self.listbox.select_set(self.current_index)
-            self.show_image()
-        else:
-            self.canvas.delete("all")
-            self.status_label.config(text="All files moved.")
+            self.selected_indices = []
+            self.listbox.selection_clear(0, tk.END)
 
-        if moved_files:
-            self.set_status(f"{self.filename} ({self.created})","All files already exist in destination.")
+
+            if self.image_paths:
+                self.current_index = min(indices_to_move[0], len(self.image_paths) - 1)
+                self.listbox.select_set(self.current_index)
+                self.show_image()
+            else:
+                self.image_canvas.delete("all")
+                self.status_label.config(text="All files moved.")
+
+            if moved_files:
+                self.set_status(f"{self.filename} ({self.created})", f"Moved {len(moved_files)} files.")
+            else:
+                self.set_status(f"{self.filename} ({self.created})", "All selected files already exist.")
+
     def is_typing(self):
         return isinstance(self.root.focus_get(), tk.Entry)  
 if __name__ == "__main__":
