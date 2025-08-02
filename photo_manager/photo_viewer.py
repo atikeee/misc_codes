@@ -1,51 +1,163 @@
-import os
+import os,shutil
 import tkinter as tk
-from tkinter import filedialog, messagebox, Listbox, Scrollbar
+from tkinter import filedialog, Listbox, Scrollbar
 from PIL import Image, ImageTk
 from pathlib import Path
+
+import platform
+import datetime
+
+import json
+
+CONFIG_FILE = "image_viewer_config.json"
+
+def load_config():
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r") as f:
+                return json.load(f)
+        except:
+            pass
+    return {"move_base_path": "", "move_postfix": ""}
+
+def save_config(config):
+    try:
+        with open(CONFIG_FILE, "w") as f:
+            json.dump(config, f)
+    except Exception as e:
+        print(f"Failed to save config: {e}")
+
+
+def get_file_creation_time(path):
+    try:
+        if platform.system() == 'Windows':
+            ctime = os.path.getctime(path)
+        else:
+            stat = os.stat(path)
+            ctime = getattr(stat, 'st_birthtime', stat.st_mtime)
+        return datetime.datetime.fromtimestamp(ctime).strftime("%Y-%m-%d %I:%M %p")
+    except Exception as e:
+        return "Unknown"
+
+
 
 class ImageViewerApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Cross-Platform JPG Viewer")
+        self.filename=""
+        self.created=""
+        self.root.title("JPG Image Viewer")
+        self.selected_indices = []
+
         self.image_paths = []
         self.current_index = 0
-        self.image_label = None
+        self.tk_image = None
+        self.current_image = None
+        self.rotation_angle = 0
+        self.config = load_config()
 
-        # Layout frames
+        # Frames
         self.left_frame = tk.Frame(root)
         self.left_frame.pack(side=tk.LEFT, fill=tk.Y)
 
         self.right_frame = tk.Frame(root)
         self.right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
 
-        # File list with scrollbar
-        self.listbox = Listbox(self.left_frame, width=40)
+        # Listbox for filenames
+        #self.listbox = Listbox(self.left_frame, width=40)
+        self.listbox =  Listbox(self.left_frame, selectmode=tk.EXTENDED)
+
         self.listbox.pack(side=tk.LEFT, fill=tk.Y)
 
         scrollbar = Scrollbar(self.left_frame)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
         self.listbox.config(yscrollcommand=scrollbar.set)
         scrollbar.config(command=self.listbox.yview)
 
         self.listbox.bind("<<ListboxSelect>>", self.on_listbox_select)
+        
+        # Buttons at top
+        top_buttons = tk.Frame(self.right_frame)
+        top_buttons.pack(side=tk.TOP, fill=tk.X)
 
-        # Buttons
-        top_button_frame = tk.Frame(self.right_frame)
-        top_button_frame.pack(side=tk.TOP, fill=tk.X)
-
-        tk.Button(top_button_frame, text="Browse Folder", command=self.browse_folder).pack(side=tk.LEFT)
-        tk.Button(top_button_frame, text="Delete Image", command=self.delete_current_image).pack(side=tk.LEFT)
-
+        tk.Button(top_buttons, text="Browse Folder (o)", command=self.browse_folder).pack(side=tk.LEFT, padx=5)
+        tk.Button(top_buttons, text="Previous (b)", command=self.prev_image).pack(side=tk.LEFT, padx=5)
+        tk.Button(top_buttons, text="Next (n)", command=self.next_image).pack(side=tk.LEFT, padx=5)
+        tk.Button(top_buttons, text="Delete (d)", command=self.delete_current_image).pack(side=tk.LEFT, padx=5)
+        tk.Button(top_buttons, text="Rotate (r)", command=self.rotate_image).pack(side=tk.LEFT, padx=5)
+        tk.Button(top_buttons, text="Move (m)", command=self.move_current_images).pack(side=tk.LEFT, padx=5)
         # Image display
         self.image_canvas = tk.Canvas(self.right_frame, bg="black")
         self.image_canvas.pack(fill=tk.BOTH, expand=True)
+        # --- Compact control row (single line) ---
+        control_row = tk.Frame(self.right_frame)
+        control_row.pack(fill=tk.X, padx=10, pady=5)
 
+        # Raw checkbox
+        self.raw_var = tk.BooleanVar()
+        tk.Checkbutton(control_row, text="Raw", variable=self.raw_var).pack(side=tk.LEFT)
+
+        # Move base folder
+        tk.Label(control_row, text="Destination:").pack(side=tk.LEFT)
+        self.move_base_entry = tk.Entry(control_row, width=25)
+        self.move_base_entry.insert(0, self.config.get("move_base_path", ""))
+        self.move_base_entry.pack(side=tk.LEFT, padx=2)
+
+        # Browse button
+        tk.Button(control_row, text="📁", command=self.browse_destination).pack(side=tk.LEFT)
+
+        # Postfix
+        tk.Label(control_row, text="Postfix:").pack(side=tk.LEFT, padx=(10, 0))
+        self.move_postfix_entry = tk.Entry(control_row, width=10)
+        self.move_postfix_entry.insert(0, self.config.get("move_postfix", ""))
+        self.move_postfix_entry.pack(side=tk.LEFT, padx=2)
+
+        # Save button
+        tk.Button(control_row, text="💾", command=self.save_move_settings).pack(side=tk.LEFT, padx=(5, 2))
+
+        # Move button
+        tk.Button(control_row, text="📦 Move", command=self.move_current_images).pack(side=tk.LEFT, padx=(5, 0))
+
+        # Key bindings
         self.root.bind("<Left>", self.prev_image)
         self.root.bind("<Right>", self.next_image)
+        self.root.bind("n", self.next_image)
+        self.root.bind("b", self.prev_image)
+        self.root.bind("d", self.delete_current_image)
+        self.root.bind("<Delete>", self.delete_current_image)
+        self.root.bind("o", self.browse_folder)
+        self.root.bind("r", self.rotate_image)
+        self.root.bind('m', self.move_current_images)
 
-    def browse_folder(self):
+        # Resize event
+        self.image_canvas.bind("<Configure>", lambda e: self.show_image())
+        # Status bar for filename and date
+        self.status_label = tk.Label(self.right_frame, text="", anchor=tk.W, fg="gray", font=("Arial", 10))
+        self.status_label.pack(side=tk.BOTTOM, fill=tk.X)
+
+    def on_listbox_select(self, event):
+        if not self.image_paths:
+            return
+        selections = self.listbox.curselection()
+        if not selections:
+            return
+
+        self.selected_indices = list(selections)
+        self.current_index = self.selected_indices[0]
+        self.show_image()
+
+
+
+    def set_status(self, info,message=None):
+        #current_text = self.status_label.cget("text")
+        #parts = current_text.split(" | ")
+        if message:
+            info += f"| {message}"
+        self.status_label.config(text=info)
+
+
+    def browse_folder(self, event=None):
+        if self.is_typing(): return
         folder = filedialog.askdirectory()
         if not folder:
             return
@@ -55,77 +167,196 @@ class ImageViewerApp:
             if p.suffix.lower() == ".jpg"
         ]
         self.image_paths.sort()
+
         self.listbox.delete(0, tk.END)
         for path in self.image_paths:
             self.listbox.insert(tk.END, os.path.basename(path))
-            print (path)
 
         self.current_index = 0
+        self.rotation_angle = 0
         self.show_image()
 
     def show_image(self):
         if not self.image_paths:
+            self.image_canvas.delete("all")
             return
 
         image_path = self.image_paths[self.current_index]
         try:
-            image = Image.open(image_path)
-            # Resize to fit canvas
+            self.current_image = Image.open(image_path)
+
+            if self.rotation_angle != 0:
+                self.current_image = self.current_image.rotate(self.rotation_angle, expand=True)
+
+            # Resize to fit canvas while preserving aspect ratio
             canvas_width = self.image_canvas.winfo_width()
             canvas_height = self.image_canvas.winfo_height()
 
-            if canvas_width == 1 or canvas_height == 1:
-                canvas_width, canvas_height = 800, 600  # default
+            img_ratio = self.current_image.width / self.current_image.height
+            canvas_ratio = canvas_width / canvas_height
 
-            image.thumbnail((canvas_width, canvas_height))
-            self.tk_image = ImageTk.PhotoImage(image)
+            if img_ratio > canvas_ratio:
+                new_width = canvas_width
+                new_height = int(canvas_width / img_ratio)
+            else:
+                new_height = canvas_height
+                new_width = int(canvas_height * img_ratio)
+
+            resized = self.current_image.resize((new_width, new_height), Image.LANCZOS)
+            self.tk_image = ImageTk.PhotoImage(resized)
 
             self.image_canvas.delete("all")
             self.image_canvas.create_image(
                 canvas_width // 2,
                 canvas_height // 2,
                 anchor=tk.CENTER,
-                image=self.tk_image,
+                image=self.tk_image
             )
+
+            # Highlight selected image in list
             self.listbox.select_clear(0, tk.END)
             self.listbox.select_set(self.current_index)
             self.listbox.see(self.current_index)
+            # Update status bar
+            self.filename = os.path.basename(image_path)
+            self.created = get_file_creation_time(image_path)
+            #self.status_label.config(text=f"File: {filename} | Created: {created}")
+            self.set_status(f"{self.filename} ({self.created})")
+
         except Exception as e:
-            print(f"Error loading image: {e}")
+            print(f"Error showing image: {e}")
 
     def next_image(self, event=None):
+        if self.is_typing(): return
         if self.current_index < len(self.image_paths) - 1:
             self.current_index += 1
+            self.rotation_angle = 0
             self.show_image()
 
     def prev_image(self, event=None):
+        if self.is_typing(): return
         if self.current_index > 0:
             self.current_index -= 1
+            self.rotation_angle = 0
             self.show_image()
 
-    def on_listbox_select(self, event):
-        selection = event.widget.curselection()
-        if selection:
-            self.current_index = selection[0]
-            self.show_image()
-
-    def delete_current_image(self):
+    def delete_current_image(self, event=None):
+        if self.is_typing(): return
         if not self.image_paths:
             return
-        path = self.image_paths[self.current_index]
+
+        current_path = Path(self.image_paths[self.current_index])
+        base_name = current_path.stem
+        folder = current_path.parent
+
         try:
-            os.remove(path)
-            print(f"Deleted: {path}")
+            deleted_files = []
+
+            if self.raw_var.get():
+                for f in folder.iterdir():
+                    if f.stem == base_name:
+                        f.unlink()
+                        deleted_files.append(f.name)
+            else:
+                current_path.unlink()
+                deleted_files.append(current_path.name)
+
+            print(f"Deleted: {', '.join(deleted_files)}")
+
+            # Refresh list
             del self.image_paths[self.current_index]
             self.listbox.delete(self.current_index)
             if self.current_index >= len(self.image_paths):
                 self.current_index = max(0, len(self.image_paths) - 1)
+            self.rotation_angle = 0
             self.show_image()
+
         except Exception as e:
             print(f"Error deleting file: {e}")
 
+    def rotate_image(self, event=None):
+        if self.is_typing(): return
+        if not self.image_paths:
+            return
+
+        path = self.image_paths[self.current_index]
+        try:
+            image = Image.open(path)
+            rotated = image.rotate(90, expand=True)  # PIL rotates counter-clockwise by default
+            rotated.save(path)  # Overwrite original image
+            print(f"Rotated and saved: {path}")
+            self.rotation_angle = 0  # Reset rotation tracker
+            self.show_image()  # Reload and display updated image
+        except Exception as e:
+            print(f"Error rotating image: {e}")
+    def save_move_settings(self):
+        self.config["move_base_path"] = self.move_base_entry.get().strip()
+        self.config["move_postfix"] = self.move_postfix_entry.get().strip()
+        save_config(self.config)
+        print("Settings saved.")
+    def browse_destination(self):
+        folder = filedialog.askdirectory()
+        if folder:
+            self.move_base_entry.delete(0, tk.END)
+            self.move_base_entry.insert(0, folder)
+
+
+
+
+    def move_current_images(self, event=None):
+        if self.is_typing():
+            return
+
+        if not self.image_paths:
+            return
+
+        if not self.config.get("move_base_path", ""):
+            self.set_status(f"{self.filename} ({self.created})","Destination path or postfix is missing.")
+            return
+
+        # If multiple files selected, use those; otherwise fallback to current image
+        indices_to_move = self.selected_indices if self.selected_indices else [self.current_index]
+        moved_files = []
+
+        for idx in sorted(indices_to_move, reverse=True):  # Reverse to avoid index shift
+            src_path = Path(self.image_paths[idx])
+            created = get_file_creation_time(str(src_path))
+            date_prefix = datetime.datetime.strptime(created, "%Y-%m-%d %I:%M %p").strftime("%Y%m%d")
+            postfix = self.config.get("move_postfix", "").strip()
+            dest_dir = Path(self.config.get("move_base_path", "")) /  f"{date_prefix}_{postfix}"
+            dest_dir.mkdir(parents=True, exist_ok=True)
+
+            files_to_move = [src_path]
+            if self.raw_var.get():  # If RAW checkbox is on, get all matching base name files
+                files_to_move = list(src_path.parent.glob(src_path.stem + '.*'))
+
+            for file_path in files_to_move:
+                dest_path = dest_dir / file_path.name
+                if dest_path.exists():
+                    self.set_status(f"{self.filename} ({self.created})",f"Already exists: {file_path.name}")
+                    continue
+                shutil.copy2(str(file_path), str(dest_path))
+                moved_files.append(file_path)
+
+            # Remove from list
+            del self.image_paths[idx]
+            self.listbox.delete(idx)
+
+        self.selected_indices = []
+        if self.image_paths:
+            self.current_index = min(indices_to_move[0], len(self.image_paths) - 1)
+            self.listbox.select_set(self.current_index)
+            self.show_image()
+        else:
+            self.canvas.delete("all")
+            self.status_label.config(text="All files moved.")
+
+        if moved_files:
+            self.set_status(f"{self.filename} ({self.created})","All files already exist in destination.")
+    def is_typing(self):
+        return isinstance(self.root.focus_get(), tk.Entry)  
 if __name__ == "__main__":
     root = tk.Tk()
-    root.geometry("1000x700")
+    root.geometry("1200x800")
     app = ImageViewerApp(root)
     root.mainloop()
