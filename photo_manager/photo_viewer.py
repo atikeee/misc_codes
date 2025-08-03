@@ -1,3 +1,10 @@
+"""
+Installer command: 
+pyinstaller --noconfirm --onefile --windowed photo_viewer.py
+
+
+"""
+
 import os,shutil#, piexif
 import tkinter as tk
 from tkinter import filedialog, Listbox, Scrollbar
@@ -87,7 +94,7 @@ class ImageViewerApp:
         top_buttons.pack(side=tk.TOP, fill=tk.X)
 
         tk.Button(top_buttons, text="Browse Folder (o)", command=self.browse_folder).pack(side=tk.LEFT, padx=5)
-        tk.Button(top_buttons, text="Browse Raw", command=self.browse_folder_raw).pack(side=tk.LEFT, padx=5)
+        tk.Button(top_buttons, text="Browse Raw (p)", command=self.browse_folder_raw).pack(side=tk.LEFT, padx=5)
         tk.Button(top_buttons, text="Previous (b)", command=self.prev_image).pack(side=tk.LEFT, padx=5)
         tk.Button(top_buttons, text="Next (n)", command=self.next_image).pack(side=tk.LEFT, padx=5)
         tk.Button(top_buttons, text="Delete (d)", command=self.delete_current_image).pack(side=tk.LEFT, padx=5)
@@ -142,11 +149,21 @@ class ImageViewerApp:
         self.root.bind("<Left>", self.prev_image)
         self.root.bind("<Right>", self.next_image)
         self.root.bind("n", self.next_image)
+        self.root.bind("N", self.next_image)
         self.root.bind("b", self.prev_image)
+        self.root.bind("B", self.prev_image)
         self.root.bind("d", self.delete_current_image)
+        self.root.bind("D", self.delete_current_image)
         self.root.bind("<Delete>", self.delete_current_image)
         self.root.bind("o", self.browse_folder)
+        self.root.bind("O", self.browse_folder)
+        self.root.bind("p", self.browse_folder_raw)
+        self.root.bind("P", self.browse_folder_raw)
+        self.root.bind("R", self.rotate_image)
         self.root.bind("r", self.rotate_image)
+        self.root.bind("C", self.convert_raw_images)
+        self.root.bind("c", self.convert_raw_images)
+        self.root.bind('M', self.move_current_images)
         self.root.bind('m', self.move_current_images)
 
         # Resize event
@@ -199,7 +216,7 @@ class ImageViewerApp:
         self.rotation_angle = 0
         self.show_image()
         
-    def browse_folder_raw(self):
+    def browse_folder_raw(self, event = None):
         folder = filedialog.askdirectory()
         if not folder:
             return
@@ -497,8 +514,11 @@ class ImageViewerApp:
                 self.set_status(f"{self.filename} ({self.created})", f"Moved {len(moved_files)} files.")
             else:
                 self.set_status(f"{self.filename} ({self.created})", "All selected files already exist.")
-    def convert_raw_images(self):
+    def convert_raw_images(self,event=None):
         if self.is_typing():
+            return
+        if not self.rawflag:
+            self.set_status(f"{self.filename} ({self.created})", "No need to convert jpg")
             return
         indices = self.selected_indices if self.selected_indices else [self.current_index]
 
@@ -538,7 +558,8 @@ class ImageViewerApp:
                     self.set_status(src_path.name, "File already exists.")
                     continue
 
-                output_img.save(dest_file, "JPEG", quality=95)
+                #output_img.save(dest_file, "JPEG", quality=95)
+                output_img.save(dest_file, "JPEG", quality=95, subsampling=0, optimize=True, progressive=True)
                 converted.append(dest_file.name)
 
             except Exception as e:
