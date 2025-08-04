@@ -4,6 +4,13 @@ pyinstaller --noconfirm --onefile --windowed photo_viewer.py
 
 
 """
+from google.oauth2 import service_account
+from googleapiclient.http import MediaFileUpload
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+import mimetypes
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
 
 import os,shutil#, piexif
 import tkinter as tk
@@ -16,7 +23,7 @@ import platform
 import datetime
 import rawpy
 import imageio
-
+import requests
 import json
 
 CONFIG_FILE = "image_viewer_config.json"
@@ -52,6 +59,55 @@ def get_file_creation_time(path):
         return "Unknown"
 
 
+def upload_file_to_my_drive(local_path: str, drive_folder_name: str = "PhotoViewerUploads"):
+    SCOPES = ['https://www.googleapis.com/auth/drive.file']
+    creds = None
+
+    # This stores login token
+    if os.path.exists('token.json'):
+        from google.oauth2.credentials import Credentials
+        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+            creds = flow.run_local_server(port=0)
+        with open('token.json', 'w') as token:
+            token.write(creds.to_json())
+
+    service = build('drive', 'v3', credentials=creds)
+
+    # Check or create upload folder
+    query = f"name='{drive_folder_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+    results = service.files().list(q=query, spaces='drive').execute()
+    items = results.get('files', [])
+    if items:
+        folder_id = items[0]['id']
+    else:
+        file_metadata = {
+            'name': drive_folder_name,
+            'mimeType': 'application/vnd.google-apps.folder'
+        }
+        folder = service.files().create(body=file_metadata, fields='id').execute()
+        folder_id = folder.get('id')
+
+    filename = os.path.basename(local_path)
+
+    # Check if file exists
+    query = f"name='{filename}' and '{folder_id}' in parents and trashed=false"
+    res = service.files().list(q=query, spaces="drive").execute()
+    if res.get("files"):
+        print("File already exists. Skipping.")
+        return
+
+    mime_type = mimetypes.guess_type(local_path)[0] or "application/octet-stream"
+    file_metadata = {'name': filename, 'parents': [folder_id]}
+    media = MediaFileUpload(local_path, mimetype=mime_type)
+    file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+
+    print(f"Uploaded: {filename} (ID: {file.get('id')})")
 
 class ImageViewerApp:
     def __init__(self, root):
@@ -61,7 +117,7 @@ class ImageViewerApp:
         self.created=""
         self.root.title("JPG Image Viewer")
         self.selected_indices = []
-
+        self.converted_raw_cache = {}
         self.image_paths = []
         self.current_index = 0
         self.tk_image = None
@@ -101,6 +157,7 @@ class ImageViewerApp:
         tk.Button(top_buttons, text="Rotate (r)", command=self.rotate_image).pack(side=tk.LEFT, padx=5)
         tk.Button(top_buttons, text="Move (m)", command=self.move_current_images).pack(side=tk.LEFT, padx=5)
         tk.Button(top_buttons, text="Convert (c)", command=self.convert_raw_images).pack(side=tk.LEFT, padx=(5, 2))
+        tk.Button(top_buttons, text="Google (g)", command=self.upload_to_drive).pack(side=tk.LEFT, padx=5)
 
         # Image display
         self.image_canvas = tk.Canvas(self.right_frame, bg="black")
@@ -165,6 +222,8 @@ class ImageViewerApp:
         self.root.bind("c", self.convert_raw_images)
         self.root.bind('M', self.move_current_images)
         self.root.bind('m', self.move_current_images)
+        self.root.bind('g',self.upload_to_drive)
+        self.root.bind('G',self.upload_to_drive)
 
         # Resize event
         self.image_canvas.bind("<Configure>", lambda e: self.show_image())
@@ -570,7 +629,142 @@ class ImageViewerApp:
             self.set_status(f"{len(converted)} RAW converted to JPEG")
         else:
             self.set_status("No RAW images converted.")
-            
+                
+
+    def upload_to_drive2(self,event=None):
+
+        SCOPES = ['https://www.googleapis.com/auth/drive.file']
+        creds = None
+
+        # Load cached token or log in
+        if os.path.exists('token.json'):
+            creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+        if not creds or not creds.valid:
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+            else:
+                flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+                creds = flow.run_local_server(port=0)
+            with open('token.json', 'w') as token:
+                token.write(creds.to_json())
+
+        service = build('drive', 'v3', credentials=creds)
+
+        # Create or get the target folder
+        folder_name = "PhotoViewerUploads"
+        folder_query = f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+        folder_list = service.files().list(q=folder_query, spaces='drive').execute().get('files', [])
+        if folder_list:
+            folder_id = folder_list[0]['id']
+        else:
+            folder_metadata = {'name': folder_name, 'mimeType': 'application/vnd.google-apps.folder'}
+            folder_id = service.files().create(body=folder_metadata, fields='id').execute()['id']
+
+        # Determine files to upload
+        indices = self.selected_indices if self.selected_indices else [self.current_index]
+        uploaded = []
+
+        for idx in indices:
+            src_path = Path(self.image_paths[idx])
+            filename = src_path.stem + ".jpg" if src_path.suffix.lower() in RAW_EXTS else src_path.name
+            local_path = self.converted_raw_cache.get(str(src_path), str(src_path))  # use converted path if RAW
+
+            # Check for duplicate in Drive folder
+            query = f"name='{filename}' and '{folder_id}' in parents and trashed=false"
+            exists = service.files().list(q=query, spaces='drive').execute().get("files", [])
+            if exists:
+                self.set_status(filename, "Already exists in Drive.")
+                continue
+
+            mime_type = mimetypes.guess_type(local_path)[0] or 'application/octet-stream'
+            metadata = {'name': filename, 'parents': [folder_id]}
+            media = MediaFileUpload(local_path, mimetype=mime_type)
+
+            try:
+                service.files().create(body=metadata, media_body=media, fields='id').execute()
+                uploaded.append(filename)
+            except Exception as e:
+                self.set_status(filename, f"Upload failed: {e}")
+
+        if uploaded:
+            self.set_status(f"Uploaded to Drive: {', '.join(uploaded)}")
+
+
+
+    def upload_to_drive(self,event=None):
+        SCOPES = ['https://www.googleapis.com/auth/photoslibrary.appendonly']
+        creds = None
+
+        if os.path.exists('token_photos.json'):
+            creds = Credentials.from_authorized_user_file('token_photos.json', SCOPES)
+        if not creds or not creds.valid:
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+            else:
+                flow = InstalledAppFlow.from_client_secrets_file('credentialsgp.json', SCOPES)
+                creds = flow.run_local_server(port=0)
+            with open('token_photos.json', 'w') as token:
+                token.write(creds.to_json())
+
+        headers = {
+            'Authorization': f'Bearer {creds.token}',
+            'Content-type': 'application/octet-stream',
+            'X-Goog-Upload-Protocol': 'raw',
+        }
+
+        indices = self.selected_indices if self.selected_indices else [self.current_index]
+        uploaded = []
+
+        for idx in indices:
+            src_path = Path(self.image_paths[idx])
+            # Only upload JPGs (or converted RAWs)
+            if src_path.suffix.lower() in RAW_EXTS:
+                local_path = self.converted_raw_cache.get(str(src_path))
+                if not local_path:
+                    self.set_status(src_path.name, "RAW not converted.")
+                    continue
+            else:
+                local_path = str(src_path)
+
+            try:
+                with open(local_path, 'rb') as f:
+                    upload_token = requests.post(
+                        'https://photoslibrary.googleapis.com/v1/uploads',
+                        data=f,
+                        headers=headers
+                    ).text
+
+                if not upload_token:
+                    self.set_status(src_path.name, "Upload token failed.")
+                    continue
+
+                create_body = {
+                    "newMediaItems": [
+                        {
+                            "description": "",
+                            "simpleMediaItem": {
+                                "uploadToken": upload_token
+                            }
+                        }
+                    ]
+                }
+
+                create_response = requests.post(
+                    'https://photoslibrary.googleapis.com/v1/mediaItems:batchCreate',
+                    headers={'Authorization': f'Bearer {creds.token}'},
+                    json=create_body
+                )
+
+                if create_response.status_code == 200:
+                    uploaded.append(os.path.basename(local_path))
+                else:
+                    self.set_status(src_path.name, f"Create failed: {create_response.text}")
+
+            except Exception as e:
+                self.set_status(src_path.name, f"Upload error: {e}")
+
+        if uploaded:
+            self.set_status(f"Uploaded to Google Photos: {', '.join(uploaded)}")
 
     def is_typing(self):
         return isinstance(self.root.focus_get(), tk.Entry)  
