@@ -157,7 +157,7 @@ class ImageViewerApp:
         tk.Button(top_buttons, text="Rotate (r)", command=self.rotate_image).pack(side=tk.LEFT, padx=5)
         tk.Button(top_buttons, text="Move (m)", command=self.move_current_images).pack(side=tk.LEFT, padx=5)
         tk.Button(top_buttons, text="Convert (c)", command=self.convert_raw_images).pack(side=tk.LEFT, padx=(5, 2))
-        tk.Button(top_buttons, text="Google (g)", command=self.upload_to_drive).pack(side=tk.LEFT, padx=5)
+        tk.Button(top_buttons, text="Google (g)", command=self.upload_to_google_photos).pack(side=tk.LEFT, padx=5)
 
         # Image display
         self.image_canvas = tk.Canvas(self.right_frame, bg="black")
@@ -189,7 +189,7 @@ class ImageViewerApp:
 
         # Postfix
         tk.Label(control_row, text="Postfix:").pack(side=tk.LEFT, padx=(10, 0))
-        self.move_postfix_entry = tk.Entry(control_row, width=10)
+        self.move_postfix_entry = tk.Entry(control_row, width=30)
         self.move_postfix_entry.insert(0, self.config.get("move_postfix", ""))
         self.move_postfix_entry.pack(side=tk.LEFT, padx=2)
         self.move_postfix_entry.bind("<Return>", self.save_postfix_and_lock)
@@ -222,8 +222,8 @@ class ImageViewerApp:
         self.root.bind("c", self.convert_raw_images)
         self.root.bind('M', self.move_current_images)
         self.root.bind('m', self.move_current_images)
-        self.root.bind('g',self.upload_to_drive)
-        self.root.bind('G',self.upload_to_drive)
+        self.root.bind('g',self.upload_to_google_photos)
+        self.root.bind('G',self.upload_to_google_photos)
 
         # Resize event
         self.image_canvas.bind("<Configure>", lambda e: self.show_image())
@@ -631,7 +631,7 @@ class ImageViewerApp:
             self.set_status("No RAW images converted.")
                 
 
-    def upload_to_drive2(self,event=None):
+    def upload_to_drive(self,event=None):
 
         SCOPES = ['https://www.googleapis.com/auth/drive.file']
         creds = None
@@ -691,7 +691,10 @@ class ImageViewerApp:
 
 
 
-    def upload_to_drive(self,event=None):
+    def upload_to_google_photos(self,event=None):
+        if self.rawflag:
+            self.set_status("ERROR", f"google upload is not possible for raw files")
+            return
         SCOPES = ['https://www.googleapis.com/auth/photoslibrary.appendonly']
         creds = None
 
@@ -718,13 +721,8 @@ class ImageViewerApp:
         for idx in indices:
             src_path = Path(self.image_paths[idx])
             # Only upload JPGs (or converted RAWs)
-            if src_path.suffix.lower() in RAW_EXTS:
-                local_path = self.converted_raw_cache.get(str(src_path))
-                if not local_path:
-                    self.set_status(src_path.name, "RAW not converted.")
-                    continue
-            else:
-                local_path = str(src_path)
+            
+            local_path = str(src_path)
 
             try:
                 with open(local_path, 'rb') as f:
