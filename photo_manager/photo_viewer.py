@@ -72,7 +72,7 @@ def upload_file_to_my_drive(local_path: str, drive_folder_name: str = "PhotoView
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+            flow = InstalledAppFlow.from_client_secrets_file('credentialsgp.json', SCOPES)
             creds = flow.run_local_server(port=0)
         with open('token.json', 'w') as token:
             token.write(creds.to_json())
@@ -157,7 +157,7 @@ class ImageViewerApp:
         tk.Button(top_buttons, text="Rotate (r)", command=self.rotate_image).pack(side=tk.LEFT, padx=5)
         tk.Button(top_buttons, text="Move (m)", command=self.move_current_images).pack(side=tk.LEFT, padx=5)
         tk.Button(top_buttons, text="Convert (c)", command=self.convert_raw_images).pack(side=tk.LEFT, padx=(5, 2))
-        tk.Button(top_buttons, text="Google (g)", command=self.upload_to_google_photos).pack(side=tk.LEFT, padx=5)
+        tk.Button(top_buttons, text="Google (g)", command=self.upload_to_drive).pack(side=tk.LEFT, padx=5)
 
         # Image display
         self.image_canvas = tk.Canvas(self.right_frame, bg="black")
@@ -222,8 +222,8 @@ class ImageViewerApp:
         self.root.bind("c", self.convert_raw_images)
         self.root.bind('M', self.move_current_images)
         self.root.bind('m', self.move_current_images)
-        self.root.bind('g',self.upload_to_google_photos)
-        self.root.bind('G',self.upload_to_google_photos)
+        self.root.bind('g',self.upload_to_drive)
+        self.root.bind('G',self.upload_to_drive)
 
         # Resize event
         self.image_canvas.bind("<Configure>", lambda e: self.show_image())
@@ -631,7 +631,7 @@ class ImageViewerApp:
             self.set_status("No RAW images converted.")
                 
 
-    def upload_to_drive(self,event=None):
+    def upload_to_drive2(self,event=None):
 
         SCOPES = ['https://www.googleapis.com/auth/drive.file']
         creds = None
@@ -643,15 +643,20 @@ class ImageViewerApp:
             if creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
             else:
-                flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+                flow = InstalledAppFlow.from_client_secrets_file('credentialsgp.json', SCOPES)
                 creds = flow.run_local_server(port=0)
             with open('token.json', 'w') as token:
                 token.write(creds.to_json())
 
         service = build('drive', 'v3', credentials=creds)
-
-        # Create or get the target folder
-        folder_name = "PhotoViewerUploads"
+        postfix = self.move_postfix_entry.get().strip()
+        base_path = self.move_base_entry.get().strip()
+        if not postfix or not base_path:
+            self.set_status(self.filename, "Missing base path or postfix.")
+            return
+        
+        
+        folder_name = postfix
         folder_query = f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
         folder_list = service.files().list(q=folder_query, spaces='drive').execute().get('files', [])
         if folder_list:
@@ -691,20 +696,24 @@ class ImageViewerApp:
 
 
 
-    def upload_to_google_photos(self,event=None):
+    #def upload_to_google_photos(self,event=None):
+    def upload_to_drive(self,event=None):
         if self.rawflag:
             self.set_status("ERROR", f"google upload is not possible for raw files")
             return
         SCOPES = ['https://www.googleapis.com/auth/photoslibrary.appendonly']
-        creds = None
+        #SCOPES = ['https://www.googleapis.com/auth/photoslibrary']
+        
 
+        creds = None
         if os.path.exists('token_photos.json'):
             creds = Credentials.from_authorized_user_file('token_photos.json', SCOPES)
+
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
             else:
-                flow = InstalledAppFlow.from_client_secrets_file('credentialsgp.json', SCOPES)
+                flow = InstalledAppFlow.from_client_secrets_file('credential_gp.json', SCOPES)
                 creds = flow.run_local_server(port=0)
             with open('token_photos.json', 'w') as token:
                 token.write(creds.to_json())
@@ -754,9 +763,11 @@ class ImageViewerApp:
                 )
 
                 if create_response.status_code == 200:
+                    #print("200 response")
                     uploaded.append(os.path.basename(local_path))
                 else:
                     self.set_status(src_path.name, f"Create failed: {create_response.text}")
+                    print(f"{create_response.text}")
 
             except Exception as e:
                 self.set_status(src_path.name, f"Upload error: {e}")
