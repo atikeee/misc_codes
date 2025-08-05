@@ -1,30 +1,34 @@
 """
 Installer command: 
 pyinstaller --noconfirm --onefile --windowed photo_viewer.py
+pyinstaller --noconfirm --windowed --onefile --name "PhotoViewer" photo_viewer.py
 
 
 """
-from google.oauth2 import service_account
-from googleapiclient.http import MediaFileUpload
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
+
 import mimetypes
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-
 import os,shutil#, piexif
-import tkinter as tk
-from tkinter import filedialog, Listbox, Scrollbar
-from PIL import Image, ImageTk, ExifTags
-from pathlib import Path
-from PIL.Image import Resampling
-
+import threading
 import platform
 import datetime
 import rawpy
 import imageio
 import requests
 import json
+
+import tkinter as tk
+from tkinter import filedialog, ttk
+
+from PIL import Image, ImageTk, ExifTags
+from pathlib import Path
+from PIL.Image import Resampling
+from google.oauth2 import service_account
+from googleapiclient.http import MediaFileUpload
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+
 
 CONFIG_FILE = "image_viewer_config.json"
 RAW_EXTS = [".cr2", ".cr3", ".arw", ".nef", ".rw2"]
@@ -59,56 +63,6 @@ def get_file_creation_time(path):
         return "Unknown"
 
 
-def upload_file_to_my_drive(local_path: str, drive_folder_name: str = "PhotoViewerUploads"):
-    SCOPES = ['https://www.googleapis.com/auth/drive.file']
-    creds = None
-
-    # This stores login token
-    if os.path.exists('token.json'):
-        from google.oauth2.credentials import Credentials
-        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
-
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file('credentialsgp.json', SCOPES)
-            creds = flow.run_local_server(port=0)
-        with open('token.json', 'w') as token:
-            token.write(creds.to_json())
-
-    service = build('drive', 'v3', credentials=creds)
-
-    # Check or create upload folder
-    query = f"name='{drive_folder_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
-    results = service.files().list(q=query, spaces='drive').execute()
-    items = results.get('files', [])
-    if items:
-        folder_id = items[0]['id']
-    else:
-        file_metadata = {
-            'name': drive_folder_name,
-            'mimeType': 'application/vnd.google-apps.folder'
-        }
-        folder = service.files().create(body=file_metadata, fields='id').execute()
-        folder_id = folder.get('id')
-
-    filename = os.path.basename(local_path)
-
-    # Check if file exists
-    query = f"name='{filename}' and '{folder_id}' in parents and trashed=false"
-    res = service.files().list(q=query, spaces="drive").execute()
-    if res.get("files"):
-        print("File already exists. Skipping.")
-        return
-
-    mime_type = mimetypes.guess_type(local_path)[0] or "application/octet-stream"
-    file_metadata = {'name': filename, 'parents': [folder_id]}
-    media = MediaFileUpload(local_path, mimetype=mime_type)
-    file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-
-    print(f"Uploaded: {filename} (ID: {file.get('id')})")
-
 class ImageViewerApp:
     def __init__(self, root):
         self.rawflag = False
@@ -132,13 +86,13 @@ class ImageViewerApp:
         self.right_frame = tk.Frame(root)
         self.right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
 
-        # Listbox for filenames
-        #self.listbox = Listbox(self.left_frame, width=40)
-        self.listbox =  Listbox(self.left_frame, selectmode=tk.EXTENDED)
+        # tk.Listbox for filenames
+        #self.listbox = tk.Listbox(self.left_frame, width=40)
+        self.listbox =  tk.Listbox(self.left_frame, selectmode=tk.EXTENDED)
 
         self.listbox.pack(side=tk.LEFT, fill=tk.Y)
 
-        scrollbar = Scrollbar(self.left_frame)
+        scrollbar = tk.Scrollbar(self.left_frame)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.listbox.config(yscrollcommand=scrollbar.set)
         scrollbar.config(command=self.listbox.yview)
@@ -230,6 +184,34 @@ class ImageViewerApp:
         # Status bar for filename and date
         self.status_label = tk.Label(self.right_frame, text="", anchor=tk.W, fg="gray", font=("Arial", 10))
         self.status_label.pack(side=tk.BOTTOM, fill=tk.X)
+
+    def show_progress_dialog(self, message="Processing..."):
+        self.progress_dialog = tk.Toplevel(self.root)
+        self.progress_dialog.title("Please wait")
+        self.progress_dialog.geometry("300x100")
+        self.progress_dialog.resizable(False, False)
+        self.progress_dialog.grab_set()
+
+        tk.Label(self.progress_dialog, text=message).pack(pady=10)
+        self.progress_bar = ttk.Progressbar(self.progress_dialog, mode='indeterminate')
+        self.progress_bar.pack(fill=tk.X, padx=20, pady=5)
+        self.progress_bar.start(10)
+
+        # Disable all other controls
+        self.disable_ui()
+
+    def close_progress_dialog(self):
+        self.progress_bar.stop()
+        self.progress_dialog.destroy()
+        self.enable_ui()
+
+    def disable_ui(self):
+        self.root.attributes("-disabled", True)
+
+    def enable_ui(self):
+        self.root.attributes("-disabled", False)
+
+
 
     def on_listbox_select(self, event):
         if not self.image_paths:
@@ -498,8 +480,22 @@ class ImageViewerApp:
             # Move cursor to end
             self.move_postfix_entry.icursor(tk.END)
 
-
     def move_current_images(self, event=None):
+        if self.is_typing() or not self.image_paths:
+            return
+        self.show_progress_dialog("Moving images...")
+
+        def task():
+            try:
+                self._move_images_internal()
+            finally:
+                self.close_progress_dialog()
+
+        threading.Thread(target=task).start()
+
+
+    def _move_images_internal(self):
+    #def move_current_images(self, event=None):
         if self.is_typing():
             return
 
@@ -573,12 +569,26 @@ class ImageViewerApp:
                 self.set_status(f"{self.filename} ({self.created})", f"Moved {len(moved_files)} files.")
             else:
                 self.set_status(f"{self.filename} ({self.created})", "All selected files already exist.")
+
+
     def convert_raw_images(self,event=None):
+        if not self.rawflag:
+            self.set_status("ERROR", "No need to convert jpg")
+            return
         if self.is_typing():
             return
-        if not self.rawflag:
-            self.set_status(f"{self.filename} ({self.created})", "No need to convert jpg")
-            return
+        self.show_progress_dialog("Converting Raw images...")
+
+        def task():
+            try:
+                self._convert_raw_images_internal()
+            finally:
+                self.close_progress_dialog()
+
+        threading.Thread(target=task).start()
+
+    def _convert_raw_images_internal(self):
+        
         indices = self.selected_indices if self.selected_indices else [self.current_index]
 
         postfix = self.move_postfix_entry.get().strip()
@@ -696,8 +706,25 @@ class ImageViewerApp:
 
 
 
+    def upload_to_drive(self, event=None):
+        if self.rawflag:
+            self.set_status("ERROR", "google upload is not possible for raw files")
+            return
+        self.show_progress_dialog("Uploading to Google...")
+
+        def task():
+            try:
+                self._upload_to_drive_internal()
+            finally:
+                self.close_progress_dialog()
+
+        threading.Thread(target=task).start()
+
+
     #def upload_to_google_photos(self,event=None):
-    def upload_to_drive(self,event=None):
+    #def upload_to_drive(self,event=None):
+    
+    def _upload_to_drive_internal(self):
         if self.rawflag:
             self.set_status("ERROR", f"google upload is not possible for raw files")
             return
