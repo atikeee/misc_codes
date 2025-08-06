@@ -111,7 +111,8 @@ class ImageViewerApp:
         tk.Button(top_buttons, text="Rotate (r)", command=self.rotate_image).pack(side=tk.LEFT, padx=5)
         tk.Button(top_buttons, text="Move (m)", command=self.move_current_images).pack(side=tk.LEFT, padx=5)
         tk.Button(top_buttons, text="Convert (c)", command=self.convert_raw_images).pack(side=tk.LEFT, padx=(5, 2))
-        tk.Button(top_buttons, text="Google (g)", command=self.upload_to_drive).pack(side=tk.LEFT, padx=5)
+        tk.Button(top_buttons, text="Google Drive(g)", command=self.upload_to_drive).pack(side=tk.LEFT, padx=5)
+        tk.Button(top_buttons, text="Google Photo", command=self.upload_to_google_photos).pack(side=tk.LEFT, padx=5)
 
         # Image display
         self.image_canvas = tk.Canvas(self.right_frame, bg="black")
@@ -639,9 +640,22 @@ class ImageViewerApp:
             self.set_status(f"{len(converted)} RAW converted to JPEG")
         else:
             self.set_status("No RAW images converted.")
-                
+            
+    def upload_to_drive(self, event=None):
+        if self.rawflag:
+            self.set_status("ERROR", "google upload is not possible for raw files")
+            return
+        self.show_progress_dialog("Uploading to Google drive...")
 
-    def upload_to_drive2(self,event=None):
+        def task():
+            try:
+                self._upload_to_drive_internal()
+            finally:
+                self.close_progress_dialog()
+
+        threading.Thread(target=task).start()                
+
+    def _upload_to_drive_internal(self):
 
         SCOPES = ['https://www.googleapis.com/auth/drive.file']
         creds = None
@@ -706,7 +720,7 @@ class ImageViewerApp:
 
 
 
-    def upload_to_drive(self, event=None):
+    def upload_to_google_photos(self, event=None):
         if self.rawflag:
             self.set_status("ERROR", "google upload is not possible for raw files")
             return
@@ -714,17 +728,15 @@ class ImageViewerApp:
 
         def task():
             try:
-                self._upload_to_drive_internal()
+                self._upload_to_google_photos_internal()
             finally:
                 self.close_progress_dialog()
 
         threading.Thread(target=task).start()
 
 
-    #def upload_to_google_photos(self,event=None):
-    #def upload_to_drive(self,event=None):
     
-    def _upload_to_drive_internal(self):
+    def _upload_to_google_photos_internal(self):
         if self.rawflag:
             self.set_status("ERROR", f"google upload is not possible for raw files")
             return
