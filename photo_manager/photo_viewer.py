@@ -3,7 +3,10 @@ Installer command:
 pyinstaller --noconfirm --onefile --windowed photo_viewer.py
 pyinstaller --noconfirm --windowed --onefile --name "PhotoViewer" photo_viewer.py
 
-
+Need to install pywin32. 
+add the bin folder to the env path. 
+and jpegtran tools need to be installed. 
+https://gnuwin32.sourceforge.net/packages/jpeg.htm
 """
 
 import mimetypes
@@ -15,7 +18,7 @@ import rawpy
 import imageio
 import requests
 import json
-
+import subprocess
 import tkinter as tk
 from tkinter import filedialog, ttk
 
@@ -61,6 +64,26 @@ def get_file_creation_time(path):
         return datetime.datetime.fromtimestamp(ctime).strftime("%Y-%m-%d %I:%M %p")
     except Exception as e:
         return "Unknown"
+        
+def rotate_jpeg_lossless(path, clockwise=True):
+    angle = '270' if clockwise else '90'
+    temp_path = path + ".rotated"
+
+    try:
+        subprocess.run([
+            'jpegtran', '-rotate', angle, '-copy', 'all', '-perfect',
+            '-outfile', temp_path, path
+        ], check=True)
+
+        os.replace(temp_path, path)
+        print(f"Rotated losslessly: {path}")
+        return True
+
+    except subprocess.CalledProcessError as e:
+        print(f"jpegtran failed: {e}")
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        return False
 
 
 class ImageViewerApp:
@@ -430,23 +453,16 @@ class ImageViewerApp:
 
         if deleted_files:
             self.set_status(f"{self.filename} ({self.created})", f"Deleted {len(deleted_files)} files.")
-
     def rotate_image(self, event=None):
-        if self.is_typing(): return
-        if not self.image_paths:
+        if self.rawflag or not self.image_paths:
             return
-        if self.rawflag: return
 
         path = self.image_paths[self.current_index]
-        try:
-            image = Image.open(path)
-            rotated = image.rotate(90, expand=True)  # PIL rotates counter-clockwise by default
-            rotated.save(path)  # Overwrite original image
-            print(f"Rotated and saved: {path}")
-            self.rotation_angle = 0  # Reset rotation tracker
-            self.show_image()  # Reload and display updated image
-        except Exception as e:
-            print(f"Error rotating image: {e}")
+        clockwise = (event.char == 'r')
+        success = rotate_jpeg_lossless(path, clockwise)
+        if success:
+            self.show_image()
+
     def save_move_settings(self):
         self.config["move_base_path"] = self.move_base_entry.get().strip()
         self.config["move_postfix"] = self.move_postfix_entry.get().strip()
