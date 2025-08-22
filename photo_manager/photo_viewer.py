@@ -1,6 +1,6 @@
 """
 Installer command: 
-pyinstaller --noconfirm --onefile --windowed photo_viewer.py
+
 pyinstaller --noconfirm --windowed --onefile --name "PhotoViewer" photo_viewer.py
 
 Need to install pywin32. 
@@ -67,22 +67,15 @@ def get_file_creation_time(path):
         
 def rotate_jpeg_lossless(path, clockwise=True):
     angle = '270' if clockwise else '90'
-    temp_path = path + ".rotated"
-
     try:
         subprocess.run([
             'jpegtran', '-rotate', angle, '-copy', 'all', '-perfect',
-            '-outfile', temp_path, path
+            '-outfile', path, path
         ], check=True)
-
-        os.replace(temp_path, path)
-        print(f"Rotated losslessly: {path}")
         return True
 
     except subprocess.CalledProcessError as e:
         print(f"jpegtran failed: {e}")
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
         return False
 
 
@@ -114,6 +107,11 @@ class ImageViewerApp:
         self.listbox =  tk.Listbox(self.left_frame, selectmode=tk.EXTENDED)
 
         self.listbox.pack(side=tk.LEFT, fill=tk.Y)
+        # Persistent marking of images
+        self.marked_flags = set()  # store marked state {index: True/False}
+        self.original_labels = {} 
+        self.listbox.bind("<Control-Button-1>", self.toggle_mark)  # ctrl+click
+        self.listbox.bind("<space>", self.toggle_mark_key)         # spacebar
 
         scrollbar = tk.Scrollbar(self.left_frame)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
@@ -136,6 +134,7 @@ class ImageViewerApp:
         tk.Button(top_buttons, text="Convert (c)", command=self.convert_raw_images).pack(side=tk.LEFT, padx=(5, 2))
         tk.Button(top_buttons, text="Google Drive(g)", command=self.upload_to_drive).pack(side=tk.LEFT, padx=5)
         tk.Button(top_buttons, text="Google Photo", command=self.upload_to_google_photos).pack(side=tk.LEFT, padx=5)
+        tk.Button(top_buttons, text="OneDrv upload(z)", command=self.upload_to_google_photos).pack(side=tk.LEFT, padx=5)
 
         # Image display
         self.image_canvas = tk.Canvas(self.right_frame, bg="black")
@@ -202,12 +201,48 @@ class ImageViewerApp:
         self.root.bind('m', self.move_current_images)
         self.root.bind('g',self.upload_to_drive)
         self.root.bind('G',self.upload_to_drive)
+        self.root.bind('z',self.upload_to_one_drive)
+        self.root.bind('Z',self.upload_to_one_drive)
 
         # Resize event
         self.image_canvas.bind("<Configure>", lambda e: self.show_image())
         # Status bar for filename and date
         self.status_label = tk.Label(self.right_frame, text="", anchor=tk.W, fg="gray", font=("Arial", 10))
         self.status_label.pack(side=tk.BOTTOM, fill=tk.X)
+    def toggle_mark(self, event):
+        """Toggle mark on ctrl+click"""
+        idx = self.listbox.nearest(event.y)
+        if idx < 0 or idx >= len(self.image_paths):
+            return
+        self._flip_mark(idx)
+
+    def toggle_mark_key(self, event):
+        """Toggle mark on space key for current selection"""
+        idx = self.current_index
+        idx = self.current_index
+        if idx is None or idx < 0 or idx >= len(self.image_paths):
+            return
+        self._flip_mark(idx)
+
+
+    def _flip_mark(self, idx):
+        if idx < 0 or idx >= len(self.image_paths):
+            return
+
+        if idx in self.marked_flags:
+            self.marked_flags.remove(idx)
+            self.listbox.delete(idx)
+            self.listbox.insert(idx, self.original_labels[idx])
+        else:
+            self.marked_flags.add(idx)
+            self.listbox.delete(idx)
+            self.listbox.insert(idx, f"{self.original_labels[idx]}✅")
+
+
+    def get_marked_indices(self):
+        """Return list of marked indices"""
+        #return [i for i, marked in self.marked_flags.items() if marked]
+        return list(self.marked_flags)
 
     def show_progress_dialog(self, message="Processing..."):
         self.progress_dialog = tk.Toplevel(self.root)
@@ -274,9 +309,15 @@ class ImageViewerApp:
         self.image_paths.sort()
 
         self.listbox.delete(0, tk.END)
-        for path in self.image_paths:
-            self.listbox.insert(tk.END, os.path.basename(path))
+        #for path in self.image_paths:
+        #    self.listbox.insert(tk.END, os.path.basename(path))
+        self.marked_flags.clear()       # reset marked state
+        self.original_labels.clear()    # reset clean labels
 
+        for i, path in enumerate(self.image_paths):
+            name = os.path.basename(path)
+            self.listbox.insert(tk.END, name)
+            self.original_labels[i] = name   # save clean 
         self.current_index = 0
         self.rotation_angle = 0
         self.show_image()
@@ -305,7 +346,13 @@ class ImageViewerApp:
         self.listbox.delete(0, tk.END)
         for f in self.image_paths:
             self.listbox.insert(tk.END, os.path.basename(f))
+        self.marked_flags.clear()        # reset tick-mark state
+        self.original_labels.clear()     # reset clean labels
 
+        for i, f in enumerate(self.image_paths):
+            name = os.path.basename(f)
+            self.listbox.insert(tk.END, name)
+            self.original_labels[i] = name   # save clean name for tick toggling
         self.listbox.select_set(0)
         self.listbox.event_generate("<<ListboxSelect>>")
 
@@ -327,7 +374,7 @@ class ImageViewerApp:
                 self.current_image = Image.fromarray(rgb)
                 self.created = get_file_creation_time(image_path)  # RAW has no EXIF typically
             else:
-                self.current_image = Image.open(image_path)
+                self.current_image = Image.open(image_path).copy()
             #exif_data = {}
             #date_taken = None
             #try:
@@ -349,8 +396,8 @@ class ImageViewerApp:
             #date_taken = get_file_creation_time(image_path)
                 
 
-            if not self.rawflag and self.rotation_angle != 0:
-                self.current_image = self.current_image.rotate(self.rotation_angle, expand=True)
+            #if not self.rawflag and self.rotation_angle != 0:
+            #    self.current_image = self.current_image.rotate(self.rotation_angle, expand=True)
 
             # Resize to fit canvas while preserving aspect ratio
             canvas_width = self.image_canvas.winfo_width()
@@ -412,14 +459,27 @@ class ImageViewerApp:
             self.show_image()
 
     def delete_current_image(self, event=None):
+        if self.is_typing() or not self.image_paths:
+            return
+        self.show_progress_dialog("Deleting images...")
+
+        def task():
+            try:
+                self._delete_current_image()
+            finally:
+                self.close_progress_dialog()
+
+        threading.Thread(target=task).start()
         if self.is_typing(): return
         if not self.image_paths:
             return
 
-        indices_to_delete = self.selected_indices if self.selected_indices else [self.current_index]
+    def _delete_current_image(self):
+        #indices = self.selected_indices if self.selected_indices else [self.current_index]
+        indices = self.get_marked_indices() or [self.current_index]
         deleted_files = []
-
-        for idx in sorted(indices_to_delete, reverse=True):
+        
+        for idx in sorted(indices, reverse=True):
             current_path = Path(self.image_paths[idx])
             base_name = current_path.stem
             folder = current_path.parent
@@ -440,11 +500,12 @@ class ImageViewerApp:
             except Exception as e:
                 print(f"Error deleting {current_path}: {e}")
 
-        self.selected_indices = []
+        self.marked_flags.clear()
+        
         self.listbox.selection_clear(0, tk.END)
 
         if self.image_paths:
-            self.current_index = min(indices_to_delete[0], len(self.image_paths) - 1)
+            self.current_index = min(indices[0], len(self.image_paths) - 1)
             self.listbox.select_set(self.current_index)
             self.show_image()
         else:
@@ -513,8 +574,7 @@ class ImageViewerApp:
 
     def _move_images_internal(self):
     #def move_current_images(self, event=None):
-        if self.is_typing():
-            return
+        if self.is_typing(): return
 
         if not self.image_paths:
             return
@@ -524,10 +584,11 @@ class ImageViewerApp:
             return
 
         # If multiple files selected, use those; otherwise fallback to current image
-        indices_to_move = self.selected_indices if self.selected_indices else [self.current_index]
+        #indices = self.selected_indices if self.selected_indices else [self.current_index]
+        indices = self.get_marked_indices() or [self.current_index]
         moved_files = []
 
-        for idx in sorted(indices_to_move, reverse=True):  # Reverse to avoid index shift
+        for idx in sorted(indices, reverse=True):  # Reverse to avoid index shift
             src_path = Path(self.image_paths[idx])
             created = get_file_creation_time(str(src_path))
 
@@ -569,13 +630,12 @@ class ImageViewerApp:
             # Remove from list
             del self.image_paths[idx]
             self.listbox.delete(idx)
-
-            self.selected_indices = []
+            
             self.listbox.selection_clear(0, tk.END)
 
 
             if self.image_paths:
-                self.current_index = min(indices_to_move[0], len(self.image_paths) - 1)
+                self.current_index = min(indices[0], len(self.image_paths) - 1)
                 self.listbox.select_set(self.current_index)
                 self.show_image()
             else:
@@ -586,14 +646,14 @@ class ImageViewerApp:
                 self.set_status(f"{self.filename} ({self.created})", f"Moved {len(moved_files)} files.")
             else:
                 self.set_status(f"{self.filename} ({self.created})", "All selected files already exist.")
+        self.marked_flags.clear()
 
 
     def convert_raw_images(self,event=None):
         if not self.rawflag:
             self.set_status("ERROR", "No need to convert jpg")
             return
-        if self.is_typing():
-            return
+        if self.is_typing(): return
         self.show_progress_dialog("Converting Raw images...")
 
         def task():
@@ -735,6 +795,24 @@ class ImageViewerApp:
             self.set_status(f"Uploaded to Drive: {', '.join(uploaded)}")
 
 
+    
+    def upload_to_one_drive(self, event=None):
+        if self.rawflag:
+            self.set_status("ERROR", "Onedrive upload is not possible for raw files")
+            return
+        self.show_progress_dialog("Uploading to OneDrive...")
+
+        def task():
+            try:
+                self._upload_to_one_drive_internal()
+            finally:
+                self.close_progress_dialog()
+
+        threading.Thread(target=task).start()
+    def _upload_to_one_drive_internal(self,):
+        
+        self.set_status("ERROR", "Not implemented yet")
+        pass
 
     def upload_to_google_photos(self, event=None):
         if self.rawflag:
@@ -753,9 +831,7 @@ class ImageViewerApp:
 
     
     def _upload_to_google_photos_internal(self):
-        if self.rawflag:
-            self.set_status("ERROR", f"google upload is not possible for raw files")
-            return
+        
         SCOPES = ['https://www.googleapis.com/auth/photoslibrary.appendonly']
         #SCOPES = ['https://www.googleapis.com/auth/photoslibrary']
         
