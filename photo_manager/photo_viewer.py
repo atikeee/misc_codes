@@ -21,7 +21,7 @@ import json
 import subprocess
 import tkinter as tk
 from tkinter import filedialog, ttk
-
+from box_auth import *
 from PIL import Image, ImageTk, ExifTags
 from pathlib import Path
 from PIL.Image import Resampling
@@ -133,8 +133,8 @@ class ImageViewerApp:
         tk.Button(top_buttons, text="Move (m)", command=self.move_current_images).pack(side=tk.LEFT, padx=5)
         tk.Button(top_buttons, text="Convert (c)", command=self.convert_raw_images).pack(side=tk.LEFT, padx=(5, 2))
         tk.Button(top_buttons, text="Google Drive(g)", command=self.upload_to_drive).pack(side=tk.LEFT, padx=5)
-        tk.Button(top_buttons, text="Google Photo", command=self.upload_to_google_photos).pack(side=tk.LEFT, padx=5)
-        tk.Button(top_buttons, text="OneDrv upload(z)", command=self.upload_to_google_photos).pack(side=tk.LEFT, padx=5)
+        tk.Button(top_buttons, text="box.atikeee(q)", command=self.upload_to_box1).pack(side=tk.LEFT, padx=5)
+        tk.Button(top_buttons, text="box.atiqilafamily(x)", command=self.upload_to_box2).pack(side=tk.LEFT, padx=5)
 
         # Image display
         self.image_canvas = tk.Canvas(self.right_frame, bg="black")
@@ -201,9 +201,10 @@ class ImageViewerApp:
         self.root.bind('m', self.move_current_images)
         self.root.bind('g',self.upload_to_drive)
         self.root.bind('G',self.upload_to_drive)
-        self.root.bind('z',self.upload_to_one_drive)
-        self.root.bind('Z',self.upload_to_one_drive)
-
+        self.root.bind('x',self.upload_to_box2)
+        self.root.bind('X',self.upload_to_box2)
+        self.root.bind('q',self.upload_to_box1)
+        self.root.bind('Q',self.upload_to_box1)
         # Resize event
         self.image_canvas.bind("<Configure>", lambda e: self.show_image())
         # Status bar for filename and date
@@ -666,8 +667,8 @@ class ImageViewerApp:
 
     def _convert_raw_images_internal(self):
         
-        indices = self.selected_indices if self.selected_indices else [self.current_index]
-
+        #indices = self.selected_indices if self.selected_indices else [self.current_index]
+        indices = self.get_marked_indices() or [self.current_index]
         postfix = self.move_postfix_entry.get().strip()
         base_path = self.move_base_entry.get().strip()
         if not postfix or not base_path:
@@ -705,13 +706,14 @@ class ImageViewerApp:
                     continue
 
                 #output_img.save(dest_file, "JPEG", quality=95)
-                output_img.save(dest_file, "JPEG", quality=95, subsampling=0, optimize=True, progressive=True)
+                output_img.save(dest_file, "JPEG", quality=95, subsampling=0, optimize=True, progressive=True,dpi=(300, 300))
                 converted.append(dest_file.name)
 
             except Exception as e:
                 print(f"Failed to convert {src_path}: {e}")
                 self.set_status(src_path.name, f"Conversion error: {e}")
-
+                
+        self.marked_flags.clear()
         if converted:
             self.set_status(f"{len(converted)} RAW converted to JPEG")
         else:
@@ -766,7 +768,8 @@ class ImageViewerApp:
             folder_id = service.files().create(body=folder_metadata, fields='id').execute()['id']
 
         # Determine files to upload
-        indices = self.selected_indices if self.selected_indices else [self.current_index]
+        #indices = self.selected_indices if self.selected_indices else [self.current_index]
+        indices = self.get_marked_indices() or [self.current_index]
         uploaded = []
 
         for idx in indices:
@@ -790,10 +793,68 @@ class ImageViewerApp:
                 uploaded.append(filename)
             except Exception as e:
                 self.set_status(filename, f"Upload failed: {e}")
-
+        self.marked_flags.clear()
         if uploaded:
             self.set_status(f"Uploaded to Drive: {', '.join(uploaded)}")
 
+    def upload_to_box1(self, event=None):
+        if self.rawflag:
+            self.set_status("ERROR", "google upload is not possible for raw files")
+            return
+        self.show_progress_dialog("Uploading to Box. account atikeee")
+
+        def task():
+            try:
+                self._upload_to_box("atikeee")
+            finally:
+                self.close_progress_dialog()
+
+        threading.Thread(target=task).start()                
+    def upload_to_box2(self, event=None):
+        if self.rawflag:
+            self.set_status("ERROR", "google upload is not possible for raw files")
+            return
+        self.show_progress_dialog("Uploading to Box. account atikeee")
+
+        def task():
+            try:
+                self._upload_to_box("atiqilafamily")
+            finally:
+                self.close_progress_dialog()
+
+        threading.Thread(target=task).start()         
+
+    def _upload_to_box(self,account):
+        box_auth = BoxAuthenticator(
+            account = account ,
+            redirect_uri='http://localhost:8000/'
+        )
+
+        client = box_auth.client
+
+        if client:
+            # Now you can use the client to make API calls!
+            me = client.user().get()
+            print(f"\nAuthentication successful! Hello, {me.name} ({me.id})!")
+
+            indices = self.get_marked_indices() or [self.current_index]
+            uploaded = []
+            for idx in indices:
+                src_path = Path(self.image_paths[idx])
+                created = get_file_creation_time(str(src_path))
+
+                postfix = self.move_postfix_entry.get().strip()
+                created = get_file_creation_time(str(src_path))  # Keep this
+                date_prefix = datetime.datetime.strptime(created, "%Y-%m-%d %I:%M %p").strftime("%Y%m%d")
+                if self.no_date_var.get():
+                    folder_name = postfix
+                else:
+                    folder_name = f"{date_prefix}_{postfix}"
+                box_auth.upload_file_to_folder(folder_name,src_path)
+            
+        else:
+            print("\nAuthentication failed. Exiting.")
+        
 
     
     def upload_to_one_drive(self, event=None):
