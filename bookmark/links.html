@@ -40,12 +40,46 @@
                 }
             });
         }
+        document.addEventListener("DOMContentLoaded", function () {
+        const toggleBtn = document.getElementById("toggleAllBtn");
+        let expanded = false;
+
+        toggleBtn.addEventListener("click", function () {
+            
+            const lnklsts = document.querySelectorAll(".link-list");
+            const collapses = document.querySelectorAll(".subtopic-list");
+
+            collapses.forEach(collapse => {
+                if (!expanded) {
+                    // Expand
+                    collapse.style.display = 'block';
+                } else {
+                    // Collapse
+                    collapse.style.display = 'none';
+                }
+            });
+            lnklsts.forEach(lnklst => {
+                if (!expanded) {
+                    // Expand
+                    lnklst.style.display = 'block';
+                } else {
+                    // Collapse
+                    lnklst.style.display = 'none';
+                }
+            });
+            
+
+            expanded = !expanded;
+            toggleBtn.textContent = expanded ? "Collapse All" : "Expand All";
+        });
+    });
     </script>
     <link href="style.css" rel="stylesheet"/></head>
     
 </head>
 <body>
 <h1>Atiq's Bookmarks Collection</h1>
+<div class='d-flex justify-content-end mb-3'><button id='toggleAllBtn' class='btn btn-primary'>Expand All</button></div>
 <input type='text' id='searchInput' onkeyup='searchLinks()' placeholder='Search links...' style='width: 100%; padding: 8px;'>
 <div id='bookmarkContainer'>
 <div class='topic' onclick="toggleVisibility('topic_0')">Intel</div>
@@ -203,6 +237,8 @@
 <div class='link-item' data-topic='MyPersonal' data-subtopic='Games' data-url='https://netgames.io/games/'>7 game collections - <a href='https://netgames.io/games/' target='_blank'>https://netgames.io/games/</a></div>
 <div class='link-item' data-topic='MyPersonal' data-subtopic='Games' data-url='https://tabletopia.com/games'>collections - <a href='https://tabletopia.com/games' target='_blank'>https://tabletopia.com/games</a></div>
 <div class='link-item' data-topic='MyPersonal' data-subtopic='Games' data-url='https://rubiks-cube-solver.com/how-to-solve/'>rubric cube solver - <a href='https://rubiks-cube-solver.com/how-to-solve/' target='_blank'>https://rubiks-cube-solver.com/how-to-solve/</a></div>
+<div class='link-item' data-topic='MyPersonal' data-subtopic='Games' data-url='https://huggingface.co/spaces/Rahmanma/bridge_scoring'>bridge scoring - <a href='https://huggingface.co/spaces/Rahmanma/bridge_scoring' target='_blank'>https://huggingface.co/spaces/Rahmanma/bridge_scoring</a></div>
+<div class='link-item' data-topic='MyPersonal' data-subtopic='Games' data-url='https://huggingface.co/spaces/Rahmanma/bridge_imp_calculator'>imp calculator - <a href='https://huggingface.co/spaces/Rahmanma/bridge_imp_calculator' target='_blank'>https://huggingface.co/spaces/Rahmanma/bridge_imp_calculator</a></div>
 </div>
 <div class='subtopic' onclick="toggleVisibility('topic_5_sub_1')">bills</div>
 <div class='link-list' id='topic_5_sub_1' style='display:none;'>

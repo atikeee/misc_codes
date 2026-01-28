@@ -100,6 +100,8 @@ MyPersonal
         7 game collections,https://netgames.io/games/
         collections, https://tabletopia.com/games
         rubric cube solver,https://rubiks-cube-solver.com/how-to-solve/
+        bridge scoring,https://huggingface.co/spaces/Rahmanma/bridge_scoring
+        imp calculator,https://huggingface.co/spaces/Rahmanma/bridge_imp_calculator
     bills
         HOA,https://commonres.twa.rentmanager.com/
         PGE,https://portlandgeneral.com/
