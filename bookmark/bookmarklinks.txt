@@ -56,6 +56,9 @@ Learning
     Misc
         git book,https://git-scm.com/book/en/v2
         Modern Standby,https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/modern-standby-vs-s3
+        Java8,https://falkhausen.de/Java-8/
+        java10,https://falkhausen.de/Java-10/index.html
+        statistics,https://stattrek.com/
     book
         Powershell for sysadmin,https://www.oreilly.com/library/view/powershell-for-sysadmins/9781098122638/
         Learn powershell,https://www.oreilly.com/library/view/learn-windows-powershell/9781617294167/
@@ -86,6 +89,33 @@ Tools
         design,https://www.canva.com/
         sketchpad,https://sketch.io/sketchpad/
         fakefb,https://fakedetail.com/fake-facebook-chat-generator
+        slideshare,https://www.slideshare.net/
+        doc.pdfconvert,https://docupub.com/pdfconvert/
+    photo
+        free online photo editor,http://fotoflexer.com
+        photoeditor,http://www.photoscape.org/ps/main/index.php
+        editor designer,https://ipiccy.com/
+        online editor,http://www.fotor.com/
+        strange photo technique,https://trickphotographybook.com/?hop=hop1vendor
+        learn photography,https://www.lightandmatter.org/category/general-photography-articles/learn-photography/
+        dynamic landscape,https://digital-photography-school.com/composing-dynamic-landscape-images/
+        posing guide,https://digital-photography-school.com/women-posing-guide-in-action-7-sample-poses-21-different-photos/
+        posing guide2,https://digital-photography-school.com/posing-guide-for-photographing-women-7-more-poses-to-get-you-21-different-photos-part-ii/
+        
+        
+Travel
+    airticket
+        ticket,https://www.momondo.com/
+        skiplag,https://skiplagged.com/
+        justfly,https://www.justfly.com/
+social
+    communication
+        imo,https://imo.im/
+        telegram,https://telegram.org/
+    islam
+        hadith,https://www.quranexplorer.com/hadithebook/english/index.html
+        Quran,https://read.quranexplorer.com/1/1/7/Usmani/Mishari-Rashid/Hide/Tajweed-OFF
+        
 ToolsAI
     LLM
         prompt ai,https://www.blackbox.ai/
@@ -113,7 +143,7 @@ MyPersonal
         googlefinance watchlist,https://www.google.com/finance/portfolio/watchlist
     Misc
         My Pages,https://itsforfun.pythonanywhere.com/
-        
+        gamesutils,https://gamesutils.onrender.com/
 Ila
 
 Areeba

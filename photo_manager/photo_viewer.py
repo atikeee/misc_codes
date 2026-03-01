@@ -2,7 +2,15 @@
 Installer command: 
 
 pyinstaller --noconfirm --windowed --onefile --name "PhotoViewer" photo_viewer.py
-
+pyinstaller PhotoViewer.spec 
+a = Analysis(
+    ['photo_viewer.py'],
+    pathex=['C:\\github\\utils'],
+    binaries=[],
+    datas=[],
+    hiddenimports=['boxsdk.object.folder', 'boxsdk.object.user'],
+     excludes=['boxsdk.object.recent_item'],
+     )
 Need to install pywin32. 
 add the bin folder to the env path. 
 and jpegtran tools need to be installed. 
@@ -21,7 +29,7 @@ import json
 import subprocess
 import tkinter as tk
 from tkinter import filedialog, ttk
-from box_auth import *
+from box_auth import BoxAuthenticator
 from PIL import Image, ImageTk, ExifTags
 from pathlib import Path
 from PIL.Image import Resampling

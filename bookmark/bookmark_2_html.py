@@ -66,7 +66,13 @@ def generate_html(structure, output_file):
                 var url = link.getAttribute('data-url').toLowerCase();
                 var topic = link.getAttribute('data-topic').toLowerCase();
                 var subtopic = link.getAttribute('data-subtopic').toLowerCase();
-                if (text.includes(input) || url.includes(input) || topic.includes(input) || subtopic.includes(input)) {
+                if (text.includes(input) |import os
+import re
+from html import escape
+
+def parse_bookmark_file(input_file):
+    with open(input_file, 'r', encoding='utf-8') as f:
+        lines = f| url.includes(input) || topic.includes(input) || subtopic.includes(input)) {
                     var clone = link.cloneNode(true);
                     results.appendChild(clone);
                 }
