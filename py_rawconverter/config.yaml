@@ -1,0 +1,23 @@
+# raw2jpg configuration
+# ---------------------
+
+output:
+  # "" = save JPEG alongside the source RAW file  (recommended)
+  # any path = save to that folder instead
+  directory: ""
+
+jpeg:
+  quality:           95    # 95 = near-lossless  |  85 = good + smaller
+  subsampling:        0    # 0 = 4:4:4 best  |  1 = 4:2:2  |  2 = 4:2:0
+  optimize:        true
+  embed_icc_profile: true
+
+colour:
+  brightness:  1.0   # 1.0 = unchanged
+  contrast:    1.0
+  saturation:  1.0
+  sharpening:    1   # 0 = off  |  1 = mild  |  2 = stronger
+
+logging:
+  level:    INFO     # DEBUG for verbose output
+  log_file: conversion.log
