@@ -1,0 +1,22 @@
+ffmpeg -i input.mp3 -ss 00:01:30 -to 00:03:45 -c copy output.mp3
+
+ffmpeg -i input.mp3 -ss 00:01:30 -t 00:02:15 -c copy output.mp3
+
+ffmpeg -i input.mp3 -ss 00:01:30 -to 00:03:45 -acodec libmp3lame -q:a 0 output.mp3
+
+# 25% speed (very slow)
+ffmpeg -i input.mp3 -filter:a "atempo=0.5,atempo=0.5" output_slow.mp3
+
+For better quality time-stretching, use the rubberband library which handles distortion much better than ffmpeg's default:
+bashapt-get install -y librubberband-dev rubberband-cli
+
+# Then with ffmpeg:
+ffmpeg -i input.mp3 -filter:a "rubberband=tempo=0.75" output_slow.mp3
+
+for vdo: 
+
+ffmpeg -ss 00:01:00 -to 00:03:00 -i input.mp4 -c:v copy -c:a copy -avoid_negative_ts make_zero output.mp4
+
+
+if lag between audio vdo.
+ffmpeg -ss 00:01:00 -to 00:03:00 -i input.mp4 -c:v libx264 -c:a aac -avoid_negative_ts make_zero output.mp4

@@ -1,0 +1,18 @@
+2026-03-03 23:40:59  INFO      Found 3 RAW file(s)
+2026-03-03 23:40:59  INFO      Convert  2W0A4439.CR3
+2026-03-03 23:41:23  INFO        5999x3999 px
+2026-03-03 23:41:28  INFO        done -> 2W0A4439.jpg (4458 KB)
+2026-03-03 23:41:28  INFO      Convert  2W0A4455.CR3
+2026-03-03 23:41:58  INFO        5999x3999 px
+2026-03-03 23:42:03  INFO        done -> 2W0A4455.jpg (4637 KB)
+2026-03-03 23:42:03  INFO      Convert  2W0A6320.CR3
+2026-03-03 23:42:33  INFO        5999x3999 px
+2026-03-03 23:42:38  INFO        done -> 2W0A6320.jpg (8619 KB)
+2026-03-03 23:42:38  INFO      Done  converted=3  skipped=0  failed=0
+2026-03-03 23:46:47  INFO      Found 3 RAW file(s)
+2026-03-03 23:46:47  INFO      Convert  2W0A4439.CR3
+2026-03-03 23:47:11  INFO        5999x3999 px
+2026-03-03 23:47:16  INFO        done -> 2W0A4439.jpg (4391 KB)
+2026-03-03 23:47:16  INFO      SKIP  2W0A4455.CR3  (already exists)
+2026-03-03 23:47:16  INFO      SKIP  2W0A6320.CR3  (already exists)
+2026-03-03 23:47:16  INFO      Done  converted=1  skipped=2  failed=0

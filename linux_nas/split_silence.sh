@@ -1,92 +1,82 @@
 #!/bin/bash
 
-INPUT_FILE="$1"
+CONFIG_FILE="config.txt"
 
-# --- CONFIGURABLE PARAMETERS ---
-# noise: how quiet must it be? (e.g., -30dB). Closer to 0 is "louder" silence.
-# duration: how many seconds must the silence last?
-DEFAULT_NOISE="-30dB"
-DEFAULT_DURATION="2.0"
-
-# Allow user to override via environment or prompt
-read -p "Enter noise threshold (default $DEFAULT_NOISE): " NOISE
-NOISE=${NOISE:-$DEFAULT_NOISE}
-read -p "Enter min silence duration in seconds (default $DEFAULT_DURATION): " DUR
-DUR=${DUR:-$DEFAULT_DURATION}
-
-if [[ ! -f "$INPUT_FILE" ]]; then
-    echo "Error: File '$INPUT_FILE' not found."
+# 1. Load Configuration (With Auto-Clean for Windows CRLF)
+if [[ ! -f "$CONFIG_FILE" ]]; then
+    echo "Error: Configuration file '$CONFIG_FILE' not found."
     exit 1
 fi
 
-DIR_PATH=$(dirname "$INPUT_FILE")
-BASE_NAME=$(basename "$INPUT_FILE" | sed 's/\.[^.]*$//')
-OUTPUT_DIR="$DIR_PATH/$BASE_NAME"
+NOISE_NUM=$(grep "NOISE_DB" "$CONFIG_FILE" | cut -d'=' -f2 | tr -d '\r' | tr -d ' ')
+DUR_REQ=$(grep "SILENCE_DURATION" "$CONFIG_FILE" | cut -d'=' -f2 | tr -d '\r' | tr -d ' ')
+DIR_PATH=$(grep "FOLDER_PATH" "$CONFIG_FILE" | cut -d'=' -f2 | tr -d '\r' | tr -d ' ')
+EXT=$(grep "EXTENSION" "$CONFIG_FILE" | cut -d'=' -f2 | tr -d '\r' | tr -d ' ')
 
-echo "--- PHASE 1: SCANNING FOR SILENCE ---"
-echo "Searching with Noise: $NOISE and Duration: $DUR..."
+NOISE="-${NOISE_NUM}dB"
 
-# We use ffmpeg to find the gaps and store them in a temp file
-# We extract 'silence_start' and 'silence_end'
-TEMP_LOG="silence_scan.tmp"
-ffmpeg -i "$INPUT_FILE" -af silencedetect=noise=$NOISE:d=$DUR -f null - 2>&1 | grep "silence_" > "$TEMP_LOG"
+# 2. Determine Mode
+if [[ -n "$1" ]]; then
+    FILES=("$1")
+else
+    FILES=("$DIR_PATH"/*."$EXT")
+fi
 
+# 3. Processing Loop
+for INPUT_FILE in "${FILES[@]}"; do
+    
+    if [[ ! -e "$INPUT_FILE" ]]; then continue; fi
 
-# Build the timestamp list
-# Logic: The end of one silence is the START of a track. 
-# The start of the next silence is the END of that track.
-echo -e "Track\tStart\t\tEnd\t\tDuration"
-echo -e "----------------------------------------------------"
+    BASE_PATH="${INPUT_FILE%.*}"
+    CSV_FILE="${BASE_PATH}.csv"
+    
+    echo "Processing: $(basename "$INPUT_FILE")"
 
-START="0"
-COUNT=1
-POINTS_FOUND=0
+    # Get Total Duration
+    TOTAL_DUR=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$INPUT_FILE" | awk '{print int($1)}')
 
-# Create a processing list for Phase 2
-echo -n "" > "tracks.list"
+    # Initialize timestamps array with 0
+    TIMESTAMPS=(0)
 
-while read -l; do
-    if [[ "$l" == *"silence_start"* ]]; then
-        END=$(echo "$l" | awk '{print $NF}')
-        DIFF=$(echo "$END - $START" | bc)
-        # Only keep tracks longer than 0.5s to avoid glitches
-        if (( $(echo "$DIFF > 0.5" | bc -l) )); then
-            echo -e "$COUNT\t$START\t\t$END\t\t$DIFF"
-            echo "$START|$END|$COUNT" >> "tracks.list"
-            ((COUNT++))
-            POINTS_FOUND=1
+    # Detect silence and extract timestamps
+    while IFS= read -r LINE; do
+        if [[ "$LINE" == *"silence_start:"* ]]; then
+            RAW_TS=$(echo "$LINE" | sed 's/.*silence_start: //;s/ .*//')
+            VAL=$(echo "$RAW_TS" | awk '{print int($1)}')
+            
+            # Avoid duplicates
+            if [[ "$VAL" -gt "${TIMESTAMPS[-1]}" ]]; then
+                TIMESTAMPS+=("$VAL")
+            fi
         fi
-    elif [[ "$l" == *"silence_end"* ]]; then
-        START=$(echo "$l" | awk '{print $NF}')
-    fi
-done < "$TEMP_LOG"
+    done < <(ffmpeg -hide_banner -vn -i "$INPUT_FILE" -map a -af silencedetect=noise=$NOISE:d=$DUR_REQ -f null - 2>&1)
 
-# Handle the final track (from last silence end to end of file)
-TOTAL_DUR=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$INPUT_FILE")
-DIFF=$(echo "$TOTAL_DUR - $START" | bc)
-if (( $(echo "$DIFF > 1.0" | bc -l) )); then
-    echo -e "$COUNT\t$START\t\t$TOTAL_DUR\t\t$DIFF"
-    echo "$START|$TOTAL_DUR|$COUNT" >> "tracks.list"
-fi
+    # Add the final duration point
+    TIMESTAMPS+=("$TOTAL_DUR")
 
-if [[ $POINTS_FOUND -eq 0 ]]; then
-    echo "No silence points found. Try a louder noise threshold (e.g., -20dB)."
-    rm "$TEMP_LOG" "tracks.list"
-    exit 0
-fi
+    # 4. Generate Output File
+    # Format: Start(4), ID(2), Dur(3), MM:SS(5)
+    printf "%4s, %2s, %3s, %5s\n" "STRT" "ID" "DUR" "MM:SS" > "$CSV_FILE"
 
-echo "----------------------------------------------------"
-read -p "Found $(cat tracks.list | wc -l) tracks. Split now? (y/n): " confirm
-[[ $confirm != "y" ]] && { rm "$TEMP_LOG" "tracks.list"; exit 0; }
+    NUM_POINTS=${#TIMESTAMPS[@]}
+    
+    for (( i=0; i<$((NUM_POINTS-1)); i++ )); do
+        START=${TIMESTAMPS[$i]}
+        NEXT=${TIMESTAMPS[$((i+1))]}
+        DURATION=$((NEXT - START))
+        ID=$((i+1))
 
-mkdir -p "$OUTPUT_DIR"
+        # Calculate MM:SS (Minutes can exceed 60)
+        MINS=$((START / 60))
+        SECS=$((START % 60))
+        MMSS=$(printf "%02d:%02d" "$MINS" "$SECS")
 
-# --- PHASE 2: SPLITTING ---
-while IFS="|" read -r s e c; do
-    OUT_FILE="$OUTPUT_DIR/Track_$(printf "%03d" $c).ogg"
-    echo ">>> Writing $OUT_FILE..."
-    ffmpeg -nostdin -y -ss "$s" -to "$e" -i "$INPUT_FILE" -vn -c:a copy "$OUT_FILE" > /dev/null 2>&1
-done < "tracks.list"
+        # Formatted Output
+        printf "%4d, %2d, %3d, %5s\n" "$START" "$ID" "$DURATION" "$MMSS" >> "$CSV_FILE"
+    done
 
-rm "$TEMP_LOG" "tracks.list"
-echo "--- FINISHED: Files in $OUTPUT_DIR ---"
+    echo "  >> Generated: $(basename "$CSV_FILE")"
+done
+
+echo "--------------------------------------------------------"
+echo "Done."
